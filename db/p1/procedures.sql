@@ -59,7 +59,7 @@ CREATE OR REPLACE PROCEDURE usp_user_update_profile
     IN p_user_name VARCHAR(50),
     IN p_user_email VARCHAR(254),
     IN p_user_photo_url VARCHAR(2048),
-    IN p_expected_row_version BIGINT,
+    IN p_expected_row_version BIGINT
 )
 LANGUAGE plpgsql
 AS $$
