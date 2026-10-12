@@ -1,7 +1,7 @@
 BEGIN;
 SET search_path TO newsletter, public;
 
-INSERT INTO admins (admin_id, admin_login, admin_password_hash, admin_name)
+INSERT INTO admins (admin_id, admin_login, admin_password_hash, admin_email, admin_name)
 VALUES (4001, 'editor_demo', 'demo-password-hash', 'adm1@gmail.com', 'Demo Editor')
 ON CONFLICT (admin_id) DO NOTHING;
 
@@ -17,13 +17,13 @@ VALUES
 ON CONFLICT (newsletter_id) DO NOTHING;
 
 INSERT INTO newsletter_delivery_settings
-    (newsletter_id, delivery_mode, recipient_settings, reply_to_email)
+    (newsletter_id, reply_to_email)
 VALUES
-    (3001, 'Immediate', '{"subscribers": true}'::jsonb, 'team@example.test')
+    (3001, 'team@example.test')
 ON CONFLICT (newsletter_id) DO NOTHING;
 
 INSERT INTO subscriptions
-    (user_id, newsletter_id, status, user_email_snapshot)
+    (user_id, newsletter_id, sub_status, user_email_snapshot)
 VALUES
     (1001, 3001, 'Active', 'alex@example.test')
 ON CONFLICT (user_id, newsletter_id) DO NOTHING;
