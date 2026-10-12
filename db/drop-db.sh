@@ -33,6 +33,10 @@ printf 'Dropping PostgreSQL database accounts_db_p2 if it exists...\n'
 "${compose[@]}" exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
     -c 'DROP DATABASE IF EXISTS accounts_db_p2 WITH (FORCE)'
 
+printf 'Dropping PostgreSQL database mydb if it exists...\n'
+"${compose[@]}" exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'DROP DATABASE IF EXISTS mydb WITH (FORCE)'
+
 printf 'Waiting for MongoDB'
 for attempt in {1..30}; do
     if "${compose[@]}" exec -T mongo mongosh --quiet 'mongodb://localhost:27017/admin' \
@@ -52,4 +56,4 @@ printf 'Dropping MongoDB database game_stats_db if it exists...\n'
 "${compose[@]}" exec -T mongo mongosh --quiet 'mongodb://localhost:27017/admin' \
     --eval 'db.getSiblingDB("game_stats_db").dropDatabase()'
 
-printf 'Project databases dropped. Containers and storage volumes were kept.\n'
+printf 'Databases dropped. Containers and storage volumes were kept.\n'

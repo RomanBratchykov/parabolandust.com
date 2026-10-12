@@ -68,6 +68,8 @@ BEGIN
     SET user_name = p_user_name,
         user_email = p_user_email,
         user_photo_url = p_user_photo_url,
+        updated_at = CURRENT_TIMESTAMP,
+        updated_by = CURRENT_USER,
         row_version = row_version + 1
     WHERE user_id = p_user_id
       AND is_deleted IS FALSE
@@ -90,6 +92,8 @@ AS $$
 BEGIN
     UPDATE accounts.users
     SET is_deleted = TRUE,
+        updated_at = CURRENT_TIMESTAMP,
+        updated_by = CURRENT_USER,
         row_version = row_version + 1
     WHERE user_id = p_user_id
       AND is_deleted IS FALSE
@@ -143,6 +147,12 @@ DECLARE
     v_current_donation_status VARCHAR(20);
     v_current_row_version BIGINT;
 BEGIN
+    IF p_new_donation_status IS NULL OR p_new_donation_status NOT IN
+       ('Pending', 'Completed', 'Failed', 'Refunded') THEN
+        RAISE EXCEPTION 'Unknown donation status: %.', p_new_donation_status
+            USING ERRCODE = 'P0001';
+    END IF;
+
     SELECT donation_status, row_version
     INTO v_current_donation_status, v_current_row_version
     FROM accounts.donations
@@ -172,7 +182,10 @@ BEGIN
 
     UPDATE accounts.donations
     SET donation_status = p_new_donation_status,
+        updated_at = CURRENT_TIMESTAMP,
+        updated_by = CURRENT_USER,
         row_version = row_version + 1
-    WHERE donation_id = p_donation_id;
+    WHERE donation_id = p_donation_id
+      AND is_deleted IS FALSE;
 END;
 $$;

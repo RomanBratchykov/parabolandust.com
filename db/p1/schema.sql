@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS users
     oauth_provider VARCHAR(50),
     oauth_id VARCHAR(200),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) NOT NULL DEFAULT CURRENT_USER,
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(100),
     user_whoami VARCHAR(128) NOT NULL,
     user_photo_url VARCHAR(2048),
     row_version BIGINT NOT NULL DEFAULT 1 CHECK (row_version > 0),
@@ -23,6 +26,9 @@ CREATE TABLE IF NOT EXISTS game_linking
 (
     user_id BIGINT PRIMARY KEY REFERENCES users(user_id),
     connected_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) NOT NULL DEFAULT CURRENT_USER,
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(100),
     removed_at TIMESTAMPTZ,
     connecting_hash VARCHAR(128) NOT NULL UNIQUE,
     row_version BIGINT NOT NULL DEFAULT 1,
@@ -52,9 +58,13 @@ CREATE TABLE IF NOT EXISTS donations
     donation_amount NUMERIC(12,2) NOT NULL CHECK (donation_amount > 0),
     commentary VARCHAR(500),
     donated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) NOT NULL DEFAULT CURRENT_USER,
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(100),
     donation_status VARCHAR(20) NOT NULL DEFAULT 'Pending'
         CHECK (donation_status IN ('Pending', 'Completed', 'Failed', 'Refunded')),
     is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     currency CHAR(3) NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
     provider_payment_id VARCHAR(200) UNIQUE,
     row_version BIGINT NOT NULL DEFAULT 1,
@@ -75,7 +85,8 @@ CREATE INDEX IF NOT EXISTS ix_user_achievements_achievement
 
 CREATE INDEX IF NOT EXISTS ix_donations_user_history
     ON donations (user_id, donated_at DESC)
-    INCLUDE (donation_status, donation_amount, currency);
+    INCLUDE (donation_status, donation_amount, currency)
+    WHERE is_deleted IS FALSE;
 
 CREATE INDEX IF NOT EXISTS ix_donations_leaderboard
     ON donations (user_id)
@@ -85,3 +96,16 @@ CREATE INDEX IF NOT EXISTS ix_donations_leaderboard
 CREATE UNIQUE INDEX IF NOT EXISTS ux_donations_provider_payment_id
     ON donations (provider_payment_id)
     WHERE provider_payment_id IS NOT NULL;
+
+COMMENT ON INDEX accounts.ux_users_user_whoami IS
+    'Enforces unique game identity handles and supports lookup by game identity.';
+COMMENT ON INDEX accounts.ux_users_oauth_identity IS
+    'Prevents duplicate external login identities and supports OAuth account lookup.';
+COMMENT ON INDEX accounts.ix_user_achievements_achievement IS
+    'Lists users who earned an achievement; the primary key already supports one user''s achievements.';
+COMMENT ON INDEX accounts.ix_donations_user_history IS
+    'Loads a user''s donation history newest first without visiting the donation table for displayed values.';
+COMMENT ON INDEX accounts.ix_donations_leaderboard IS
+    'Covers completed, non-anonymous donations grouped by user for the donor leaderboard.';
+COMMENT ON INDEX accounts.ux_donations_provider_payment_id IS
+    'Finds payment-provider callbacks and prevents duplicate provider transactions.';

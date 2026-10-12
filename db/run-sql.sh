@@ -18,11 +18,12 @@ while getopts ":spc-a-:" opt; do
         a) all=true ;;
         -)
             case "$OPTARG" in
-                scheme) scheme=true ;;
+                schema|scheme) scheme=true ;;
+                all) all=true ;;
                 *) echo "Unknown option: --$OPTARG" >&2; exit 2 ;;
             esac
             ;;
-        :|\?) echo "Usage: $0 [-s] [-p] [-c|--scheme] [-a|--all]" >&2; exit 2 ;;
+        :|\?) echo "Usage: $0 [-s] [-p] [-c|--schema] [-a|--all]" >&2; exit 2 ;;
     esac
 done
 shift $((OPTIND - 1))
@@ -107,7 +108,7 @@ for index in "${!projects[@]}"; do
 done
 
 if ((${#sql_files[@]} == 0)); then
-    printf 'No SQL files selected. Use -s, -p, or -c/--scheme or -a/--all to apply SQL files.\n'
+    printf 'No SQL files selected. Use -s, -p, -c/--schema, or -a/--all to apply SQL files.\n'
 elif ((${#available_projects[@]} == 0)); then
     printf 'No requested SQL files were found; PostgreSQL was not started.\n'
 else
