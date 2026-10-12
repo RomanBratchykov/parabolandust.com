@@ -16,4 +16,8 @@ run
 ```bash
 ./db/run-sql.sh
 ```
+
+- ```-p``` for procedures
+- ```-s``` to seed
+
 See [the ER diagrams](docs/erd.md) and [database domain/design notes](db/DATABASE.md).

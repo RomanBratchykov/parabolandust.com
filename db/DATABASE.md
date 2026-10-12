@@ -36,6 +36,8 @@ Have next fields:
 - created_at(timestamp)
 - user_whoami(required, unique, used to connect into game, varchar, hash)
 - user_photo(*_url)
+- row_version(bigint, default 1, optimistic concurrency)
+- is_deleted(bool, default false, soft delete)
 
 <h4>game_linking:</h4>
 
@@ -162,7 +164,9 @@ MongoDB
 
 
 <h3>Newsletter:</h3>
+
 <h4>users_copy</h4>
+
 - user_id(primary)
 - user_name(varchar)
 - user_email(varchar, if required for delivery)

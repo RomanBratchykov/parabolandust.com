@@ -31,7 +31,30 @@ if ! "${compose[@]}" exec -T db psql -U postgres -d postgres -tAc \
     "${compose[@]}" exec -T db createdb -U postgres "$database"
 fi
 
-for sql_file in schema.sql procedures.sql seed.sql; do
+seed=false
+procedures=false
+drop=false
+while getopts "spd" opt; do
+    case $opt in
+        s) seed=true ;;
+        p) procedures=true ;;
+        d) drop=true ;;
+        *) echo "Usage: $0 [-s] [-p] [-d]" >&2; exit 1 ;;
+    esac
+done
+
+files=(schema.sql)
+[ "$seed" = true ] && files+=(seed.sql)
+[ "$procedures" = true ] && files+=(procedures.sql)
+
+if [ "$drop" = true ]; then
+    "${compose[@]}" exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+        -c "DROP DATABASE IF EXISTS \"$database\" WITH (FORCE)"
+    "${compose[@]}" exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+        -c "CREATE DATABASE \"$database\""
+fi
+
+for sql_file in "${files[@]}"; do
     printf 'Applying p1/%s to %s...\n' "$sql_file" "$database"
     "${compose[@]}" exec -T db psql \
         -v ON_ERROR_STOP=1 \
@@ -41,4 +64,14 @@ for sql_file in schema.sql procedures.sql seed.sql; do
         -f - < "$script_dir/p1/$sql_file"  
 done
 
-printf 'Project 1 database is ready.\n'
+for sql_file in "${files[@]}"; do
+    printf 'Applying p2/%s to %s...\n' "$sql_file" "$database"
+    "${compose[@]}" exec -T db psql \
+        -v ON_ERROR_STOP=1 \
+        -U postgres \
+        -d "$database" \
+        -b \
+        -f - < "$script_dir/p2/$sql_file"  
+done
+
+printf 'Project 1 databases is ready.\n'
