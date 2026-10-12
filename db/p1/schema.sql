@@ -14,9 +14,8 @@ CREATE TABLE IF NOT EXISTS users
     user_whoami VARCHAR(128) NOT NULL,
     user_photo_url VARCHAR(2048),
     row_version BIGINT NOT NULL DEFAULT 1 CHECK (row_version > 0),
-    CONSTRAINT ck_users_oauth_pair CHECK
-        ((oauth_provider IS NULL AND oauth_id IS NULL)
-         OR (oauth_provider IS NOT NULL AND oauth_id IS NOT NULL))
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT ck_users_oauth_pair CHECK (oauth_provider IS NOT NULL AND oauth_id IS NOT NULL)
 );
 
 CREATE TABLE IF NOT EXISTS game_linking
@@ -26,8 +25,8 @@ CREATE TABLE IF NOT EXISTS game_linking
     removed_at TIMESTAMPTZ,
     connecting_hash VARCHAR(128) NOT NULL UNIQUE,
     row_version BIGINT NOT NULL DEFAULT 1 CHECK (row_version > 0),
-    CONSTRAINT ck_game_linking_removed_after_connect
-        CHECK (removed_at IS NULL OR removed_at >= connected_at)
+    CONSTRAINT ck_users_oauth_pair CHECK ((oauth_provider IS NULL) = (oauth_id IS NULL)),
+    CONSTRAINT ck_users_auth CHECK (password_hash IS NOT NULL OR oauth_provider IS NOT NULL)    
 );
 
 CREATE TABLE IF NOT EXISTS achievement
@@ -57,7 +56,8 @@ CREATE TABLE IF NOT EXISTS donations
         CHECK (donation_status IN ('Pending', 'Completed', 'Failed', 'Refunded')),
     is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     currency CHAR(3) NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
-    provider_payment_id VARCHAR(200),
+    provider_payment_id VARCHAR(200) BIGINT UNIQUE,
+    row_version BIGINT NOT NULL DEFAULT 1 CHECK (row_version > 0),
 );
 
 /*--- indexes ---*/

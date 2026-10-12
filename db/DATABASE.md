@@ -56,7 +56,7 @@ Fields:
 
 Fields:
 
-- user_achievement_id(primary), or composite primary key (user_id, achievement_id)
+- composite primary key (user_id, achievement_id)
 - user_id(foreign to users.user_id)
 - achievement_id(foreign to achievement.achievement_id)
 - unlocked_at(timestamp)
@@ -80,7 +80,7 @@ Fields:
 - donation_amount(numeric)
 - commentary(varchar, nullable)
 - donated_at(timestamp)
-- status
+- donation_status
 - is_anonymous(bool)
 - currency
 - provider_payment_id(unique)
