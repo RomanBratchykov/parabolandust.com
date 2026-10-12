@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users
     row_version BIGINT NOT NULL DEFAULT 1 CHECK (row_version > 0),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT ck_users_oauth_pair CHECK ((oauth_provider IS NULL) = (oauth_id IS NULL)),
-    CONSTRAINT ck_users_auth CHECK (password_hash IS NOT NULL OR oauth_provider IS NOT NULL)
+    CONSTRAINT ck_users_auth CHECK ((password_hash IS NOT NULL) OR (oauth_provider IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS game_linking
@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS game_linking
     connected_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     removed_at TIMESTAMPTZ,
     connecting_hash VARCHAR(128) NOT NULL UNIQUE,
-    row_version BIGINT NOT NULL DEFAULT 1 CHECK (row_version > 0),
+    row_version BIGINT NOT NULL DEFAULT 1 
+    CONSTRAINT ck_game_linking_row_version CHECK (row_version > 0)
 );
 
 CREATE TABLE IF NOT EXISTS achievement
@@ -56,7 +57,8 @@ CREATE TABLE IF NOT EXISTS donations
     is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     currency CHAR(3) NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
     provider_payment_id VARCHAR(200) UNIQUE,
-    row_version BIGINT NOT NULL DEFAULT 1 CHECK (row_version > 0)
+    row_version BIGINT NOT NULL DEFAULT 1 
+    CONSTRAINT ck_donations_row_version CHECK (row_version > 0)
 );
 
 /*--- indexes ---*/

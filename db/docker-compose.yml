@@ -1,0 +1,11 @@
+services:
+  db:
+    image: postgres:17
+    container_name: pg-test
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d:ro

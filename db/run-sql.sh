@@ -37,7 +37,8 @@ for sql_file in schema.sql procedures.sql seed.sql; do
         -v ON_ERROR_STOP=1 \
         -U postgres \
         -d "$database" \
-        -f - < "$script_dir/p1/$sql_file"
+        -b \
+        -f - < "$script_dir/p1/$sql_file"  
 done
 
 printf 'Project 1 database is ready.\n'
