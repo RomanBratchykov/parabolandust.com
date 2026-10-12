@@ -20,10 +20,12 @@ with parameters:
 
 - ```-p``` for procedures
 - ```-s``` to seed
-- ```-d` to drop db and create new
+- ```-d``` o drop db and create new
 - ```--scheme``` to create scheme
+- ```--all``` to activate all parts
 
-without any parameters script wont do anything
-Script will create three databases specified in /db
+The script always starts the MongoDB service and applies existing `p3/collections.js` and `p3/seed.js` scripts. Missing setup scripts are skipped. SQL services only start when selected SQL files exist; a missing `p1` or `p2` directory or individual `schema.sql`, `procedures.sql`, or `seed.sql` file is skipped.
+
+ `p1` and `p2` use separate PostgreSQL databases; `p3` uses the MongoDB database `game_stats_db`.
 
 See [the ER diagrams](docs/erd.md) and [database domain/design notes](db/DATABASE.md).

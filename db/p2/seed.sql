@@ -2,7 +2,7 @@ BEGIN;
 SET search_path TO newsletter, public;
 
 INSERT INTO admins (admin_id, admin_login, admin_password_hash, admin_name)
-VALUES (4001, 'editor_demo', 'demo-password-hash', 'Demo Editor')
+VALUES (4001, 'editor_demo', 'demo-password-hash', 'adm1@gmail.com', 'Demo Editor')
 ON CONFLICT (admin_id) DO NOTHING;
 
 INSERT INTO users_copy (user_id, user_name, user_email, source_updated_at)
