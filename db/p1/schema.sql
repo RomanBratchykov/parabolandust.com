@@ -71,6 +71,11 @@ CREATE TABLE IF NOT EXISTS donations
     CONSTRAINT ck_donations_row_version CHECK (row_version > 0)
 );
 
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
+-- Keep older accounts databases compatible with the current donation procedures.
+ALTER TABLE accounts.donations
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
+
 /*--- indexes ---*/
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_users_user_whoami

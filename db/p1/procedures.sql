@@ -153,7 +153,7 @@ BEGIN
             USING ERRCODE = 'P0001';
     END IF;
 
-    SELECT donation_status, row_version
+    SELECT donation_status, row_version, is_deleted
     INTO v_current_donation_status, v_current_row_version
     FROM accounts.donations
     WHERE donation_id = p_donation_id AND is_deleted IS FALSE
