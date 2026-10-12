@@ -9,13 +9,11 @@ projects=(p1 p2)
 seed=false
 procedures=false
 scheme=false
-drop=false
 all=false
-while getopts ":spdsc-a-:" opt; do
+while getopts ":spc-a-:" opt; do
     case "$opt" in
         s) seed=true ;;
         p) procedures=true ;;
-        d) drop=true ;;
         c) scheme=true ;;
         a) all=true ;;
         -)
@@ -24,13 +22,19 @@ while getopts ":spdsc-a-:" opt; do
                 *) echo "Unknown option: --$OPTARG" >&2; exit 2 ;;
             esac
             ;;
-        :|\?) echo "Usage: $0 [-s] [-p] [-d] [-c|--scheme] [-a|--all]" >&2; exit 2 ;;
+        :|\?) echo "Usage: $0 [-s] [-p] [-c|--scheme] [-a|--all]" >&2; exit 2 ;;
     esac
 done
 shift $((OPTIND - 1))
 if (($# > 0)); then
     echo "Unexpected argument: $1" >&2
     exit 2
+fi
+
+# This script initializes databases only once. Any selected SQL component
+# therefore needs the schema on that same first run.
+if [[ "$all" == true || "$procedures" == true || "$seed" == true ]]; then
+    scheme=true
 fi
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -55,7 +59,17 @@ for attempt in {1..30}; do
 done
 
 mongo_applied=0
+mongo_db_exists=$("${compose[@]}" exec -T mongo mongosh --quiet 'mongodb://localhost:27017/admin' \
+    --eval 'db.adminCommand({ listDatabases: 1, nameOnly: true }).databases.some(database => database.name === "game_stats_db")')
+if [[ "$mongo_db_exists" == "true" ]]; then
+    printf 'Skipping existing MongoDB database game_stats_db; it was left unchanged.\n'
+    mongo_scripts_enabled=false
+else
+    mongo_scripts_enabled=true
+fi
+
 for mongo_script in collections.js seed.js; do
+    [[ "$mongo_scripts_enabled" == true ]] || break
     path="$script_dir/p3/$mongo_script"
     if [[ ! -f "$path" ]]; then
         printf 'Skipping missing p3/%s.\n' "$mongo_script"
@@ -66,7 +80,7 @@ for mongo_script in collections.js seed.js; do
         --file "/scripts/$mongo_script"
     mongo_applied=$((mongo_applied + 1))
 done
-if (( mongo_applied == 0 )); then
+if (( mongo_applied == 0 )) && [[ "$mongo_scripts_enabled" == true ]]; then
     printf 'MongoDB is running; no p3 setup scripts were found.\n'
 fi
 
@@ -79,7 +93,7 @@ sql_files=()
 available_projects=()
 for index in "${!projects[@]}"; do
     project="${projects[$index]}"
-    project_has_file="$drop"
+    project_has_file=false
     for sql_file in "${sql_files[@]}"; do
         if [[ -f "$script_dir/$project/$sql_file" ]]; then
             project_has_file=true
@@ -92,7 +106,7 @@ for index in "${!projects[@]}"; do
     fi
 done
 
-if ((${#sql_files[@]} == 0)) && [[ "$drop" != true ]]; then
+if ((${#sql_files[@]} == 0)); then
     printf 'No SQL files selected. Use -s, -p, or -c/--scheme or -a/--all to apply SQL files.\n'
 elif ((${#available_projects[@]} == 0)); then
     printf 'No requested SQL files were found; PostgreSQL was not started.\n'
@@ -117,20 +131,18 @@ else
         project="${projects[$index]}"
         database="${databases[$index]}"
 
-        if [[ "$drop" == true ]]; then
-            "${compose[@]}" exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
-                -c "DROP DATABASE IF EXISTS \"$database\" WITH (FORCE)"
-            "${compose[@]}" exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
-                -c "CREATE DATABASE \"$database\""
-        elif ! "${compose[@]}" exec -T db psql -U postgres -d postgres -tAc \
+        if "${compose[@]}" exec -T db psql -U postgres -d postgres -tAc \
             "SELECT 1 FROM pg_database WHERE datname = '$database'" | grep -qx '1'; then
+            printf 'Skipping existing PostgreSQL database %s; it was left unchanged.\n' "$database"
+            continue
+        else
             "${compose[@]}" exec -T db createdb -U postgres "$database"
         fi
 
         for sql_file in "${sql_files[@]}"; do
             path="$script_dir/$project/$sql_file"
             [[ -f "$path" ]] || continue
-            printf 'Applying %s/%s to %s...\n' "$project" "$sql_file" "$database"
+            printf 'Initializing new database %s with %s/%s...\n' "$database" "$project" "$sql_file"
             "${compose[@]}" exec -T db psql \
                 -v ON_ERROR_STOP=1 \
                 -U postgres \
@@ -142,7 +154,7 @@ else
     done
 
     if (( sql_applied == 0 )); then
-        printf 'SQL databases were created; no SQL files were selected.\n'
+        printf 'No new SQL databases were initialized; existing databases were left unchanged.\n'
     elif (( sql_applied == 1 )); then
         printf '1 SQL file was applied.\n'
     else

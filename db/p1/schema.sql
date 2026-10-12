@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS game_linking
     connected_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     removed_at TIMESTAMPTZ,
     connecting_hash VARCHAR(128) NOT NULL UNIQUE,
-    row_version BIGINT NOT NULL DEFAULT 1 
+    row_version BIGINT NOT NULL DEFAULT 1,
     CONSTRAINT ck_game_linking_row_version CHECK (row_version > 0)
 );
 
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS donations
     is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     currency CHAR(3) NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
     provider_payment_id VARCHAR(200) UNIQUE,
-    row_version BIGINT NOT NULL DEFAULT 1 
+    row_version BIGINT NOT NULL DEFAULT 1,
     CONSTRAINT ck_donations_row_version CHECK (row_version > 0)
 );
 

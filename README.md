@@ -12,19 +12,42 @@ Which is a website for our game
 
 ## Lab 01 database setup
 
-run 
+Run the initial setup once:
 ```bash
-./db/run-sql.sh
+./db/run-sql.sh --all
 ```
-with parameters:
+
+The script creates and initializes each database only when that database does
+not already exist. On later runs it skips existing databases without executing
+their schema, procedure, seed, or index scripts, so existing data and indexes
+are left untouched. The script does not provide a database drop/reset option.
+To rebuild from scratch, remove the relevant database yourself after backing
+up any data, then run the setup command again.
+
+For a new database, the optional selectors are:
 
 - ```-p``` for procedures
 - ```-s``` to seed
-- ```-d``` o drop db and create new
-- ```--scheme``` to create scheme
-- ```--all``` to activate all parts
+- ```--scheme``` (or ```-c```) to create the schema
+- ```--all``` to apply schema, procedures, and seed data
 
-The script always starts the MongoDB service and applies existing `p3/collections.js` and `p3/seed.js` scripts. Missing setup scripts are skipped. SQL services only start when selected SQL files exist; a missing `p1` or `p2` directory or individual `schema.sql`, `procedures.sql`, or `seed.sql` file is skipped.
+Choose the required selectors on the first run for a database. Once a database
+exists, the script intentionally skips it; it is an initializer, not a migration
+runner.
+
+To drop the three Lab 01 databases while keeping the containers and volumes,
+run:
+
+```bash
+./db/drop-db.sh
+```
+
+This removes `accounts_db_p1`, `accounts_db_p2`, and `game_stats_db` only.
+
+The script starts MongoDB and initializes `game_stats_db` only if it does not
+exist. PostgreSQL is started only when SQL setup was selected, and each project
+database is initialized only if it does not already exist. Missing setup files
+are skipped.
 
  `p1` and `p2` use separate PostgreSQL databases; `p3` uses the MongoDB database `game_stats_db`.
 
