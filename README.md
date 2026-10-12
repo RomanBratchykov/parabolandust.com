@@ -16,8 +16,14 @@ run
 ```bash
 ./db/run-sql.sh
 ```
+with parameters:
 
 - ```-p``` for procedures
 - ```-s``` to seed
+- ```-d` to drop db and create new
+- ```--scheme``` to create scheme
+
+without any parameters script wont do anything
+Script will create three databases specified in /db
 
 See [the ER diagrams](docs/erd.md) and [database domain/design notes](db/DATABASE.md).

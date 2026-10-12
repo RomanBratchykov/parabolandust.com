@@ -9,3 +9,14 @@ services:
       - "5432:5432"
     volumes:
       - ./db:/docker-entrypoint-initdb.d:ro
+  mongo:
+    image: mongo:8.0
+    container_name: mongo-test
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./p3:/scripts:ro
+
+volumes:
+  mongo_data:
