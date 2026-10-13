@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Services/Accounts/Accounts.Api/Accounts.Api.csproj" />
+  <Project Path="Services/Accounts/Accounts.Bll/Accounts.Bll.csproj" />
+  <Project Path="Services/Accounts/Accounts.Dal/Accounts.Dal.csproj" />
+  <Project Path="Services/Accounts/Accounts.Domain/Accounts.Domain.csproj" />
+</Solution>
