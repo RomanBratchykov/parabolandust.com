@@ -40,12 +40,6 @@ duplication policy](docs/erd.md).
 | `stats_user.progress.achievements_got` | Project 3 MongoDB | Project 1 `user_achievements` and `achievement` | Read projection updated by achievement-unlocked events; Project 1 owns unlock membership and definitions. |
 
 ## Lab 01 database setup
-
-Run the initial setup once:
-```bash
-./db/run-sql.sh --all
-```
-
 The script creates and initializes each database only when that database does
 not already exist. On later runs it skips existing databases without executing
 their schema, procedure, seed, or index scripts, so existing data and indexes
@@ -81,3 +75,118 @@ are skipped.
  `p1` and `p2` use separate PostgreSQL databases; `p3` uses the MongoDB database `game_stats_db`.
 
 See [the ER diagrams](docs/erd.md) and [database domain/design notes](db/DATABASE.md).
+
+Run the initial setup once:
+
+# Accounts service (Lab 02)
+
+This solution implements the Accounts API with PostgreSQL, a Dapper/ADO.NET data layer, and a .NET Aspire AppHost.
+
+## Requirements
+
+- .NET 10 SDK
+- Docker Desktop or another Docker-compatible engine
+- A NuGet connection for the first package restore
+
+## Run with Aspire
+
+From the repository root, run:
+
+```bash
+dotnet run --project Services/Accounts/Accounts.AppHost
+```
+
+The AppHost starts a PostgreSQL container and the Accounts API. At first launch, Aspire prompts for the secret `postgres-password`; use `secret` to match the local Lab 01 Compose configuration, or provide a different password. PostgreSQL creates the `accounts_db_p1` database and applies `db/p1/schema.sql`, `db/p1/seed.sql`, and `db/p1/procedures.sql` in that order when its data volume is initialized for the first time.
+
+Open the Aspire Dashboard URL printed in the console to see the API and database resources. In Development, Swagger UI is available at the API resource's `/swagger` path.
+
+To rebuild the solution without starting containers:
+
+```bash
+dotnet build Platform.slnx -m:1
+```
+
+## Run the API against an existing PostgreSQL instance
+
+The API reads `ConnectionStrings:AccountsDb` from `Services/Accounts/Accounts.Api/appsettings.json`. Override it with the environment variable `ConnectionStrings__AccountsDb`, for example:
+
+```bash
+ConnectionStrings__AccountsDb='Host=localhost;Port=5432;Database=accounts_db_p1;Username=postgres;Password=secret' \
+  dotnet run --project Services/Accounts/Accounts.Api
+```
+
+Apply the Lab 01 SQL files to the target database before using the API. When launching outside Aspire, run `dotnet run` from the repository root if you want the AppHost's SQL-file bind mounts to resolve as written.
+
+## API routes
+
+- `GET /api/users/{userId}`
+- `POST /api/users` (optionally grant `initialAchievementId` in the same transaction)
+- `PUT /api/users/{userId}`
+- `DELETE /api/users/{userId}?expectedRowVersion=1`
+- `GET /api/donations/{donationId}`
+- `POST /api/donations`
+- `PUT /api/donations/{donationId}`
+- `DELETE /api/donations/{donationId}`
+- `PATCH /api/donations/{donationId}/status`
+- `POST /api/user-achievements`
+
+Validation errors return `400`, missing resources return `404`, and state or uniqueness conflicts return `409` as ProblemDetails responses.
+
+### Transaction and concurrency notes
+
+The Accounts Unit of Work uses PostgreSQL `ReadCommitted` isolation by default.
+This keeps ordinary reads from seeing uncommitted writes without taking the
+stronger locks associated with higher isolation levels. Higher isolation can
+reduce anomalies in concurrent workflows, but can increase blocking and
+deadlock risk; keep transactions short and retry only operations that are safe
+to repeat. Repository commands currently use the provider's default command
+timeout. Profile slow queries and set a command timeout explicitly if the
+service's workload requires a different limit.
+
+User profile updates and soft deletes use the database `row_version` as an
+optimistic concurrency token. A stale version becomes a `409 Conflict`.
+
+### Example requests
+
+Create a user (the response includes a `Location` header):
+
+```bash
+curl -i -X POST http://localhost:5000/api/users \
+  -H 'Content-Type: application/json' \\
+  -d '{"userName":"O’Brien","userEmail":"obrien@example.com","passwordHash":"hash-placeholder","userWhoAmI":"Player"}'
+```
+
+Read a user:
+
+```bash
+curl -i http://localhost:5000/api/users/1
+```
+
+Create a donation:
+
+```bash
+curl -i -X POST http://localhost:5000/api/donations \
+  -H 'Content-Type: application/json' \\
+  -d '{"userId":1,"donationAmount":5.00,"currency":"USD","isAnonymous":false}'
+```
+
+Grant an achievement transactionally:
+
+```bash
+curl -i -X POST http://localhost:5000/api/user-achievements \
+  -H 'Content-Type: application/json' \\
+  -d '{"userId":1,"achievementId":1}'
+```
+
+Replace `localhost:5000` with the API URL shown in the Aspire Dashboard. The
+example user and achievement IDs must exist in the target database.
+
+## Troubleshooting Aspire startup
+
+Aspire needs access to a container runtime. If startup fails during the DCP/orchestrator dependency check, verify that `docker info` works for the same user and terminal that runs the AppHost. A Docker socket `permission denied` error means that user cannot access the Docker daemon; run from a Docker-enabled shell or configure a supported runtime such as Podman (`ASPIRE_CONTAINER_RUNTIME=podman`). On Linux, membership in the `docker` group grants root-level privileges, so only add trusted users to it.
+
+The HTTPS developer-certificate warning does not cause the DCP timeout. Trust the ASP.NET Core development certificate separately if you need browser trust for local HTTPS:
+
+```bash
+dotnet dev-certs https --trust
+```

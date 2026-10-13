@@ -10,6 +10,7 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddAccountsDal(connectionString);
+        services.AddAutoMapper(configuration => configuration.AddProfile<AccountMappingProfile>());
         services.AddScoped<IAccountsService, AccountsService>();
         return services;
     }
