@@ -1,0 +1,62 @@
+{
+  "stats_user": [
+    {
+      "user_id": { "$numberLong": "1001" },
+      "user_whoami": "game-link-alex-001",
+      "updated_at": { "$date": "2026-01-15T12:00:00Z" },
+      "totals": { "times_killed": 1, "times_won": 2, "time_played": { "$numberLong": "5400" } },
+      "progress": {
+        "challenges_completed": ["first_room"],
+        "achievements_got": ["First Steps"],
+        "rooms_visited": 8
+      },
+      "enemies": { "enemies_killed": 12, "enemies_pursued": 3, "enemies_forgiven": 1 }
+    },
+    {
+      "user_id": { "$numberLong": "1002" },
+      "user_whoami": "game-link-sam-002",
+      "updated_at": { "$date": "2026-01-15T12:00:00Z" },
+      "totals": { "times_killed": 4, "times_won": 0, "time_played": { "$numberLong": "900" } },
+      "progress": { "challenges_completed": ["tutorial"] }
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "run-demo-1001-001",
+      "user_id": { "$numberLong": "1001" },
+      "started_at": { "$date": "2026-01-15T12:00:00Z" },
+      "ended_at": { "$date": "2026-01-15T12:32:00Z" },
+      "game_version": "0.1.0-demo",
+      "successful": true,
+      "current_stats": { "enemies_killed": 12, "rooms_visited": 8, "time_played": 1920 },
+      "player_snapshot": { "user_name": "alex_player", "user_whoami": "game-link-alex-001" }
+    },
+    {
+      "run_id": "run-demo-1002-001",
+      "user_id": { "$numberLong": "1002" },
+      "started_at": { "$date": "2026-01-15T12:00:00Z" },
+      "ended_at": null,
+      "game_version": "0.1.0-demo",
+      "current_stats": { "enemies_killed": 4, "rooms_visited": 2 }
+    }
+  ],
+  "game_events": [
+    {
+      "event_id": "event-demo-1001-001",
+      "event_type": "item_collected",
+      "user_id": { "$numberLong": "1001" },
+      "run_id": "run-demo-1001-001",
+      "occurred_at": { "$date": "2026-01-15T12:04:00Z" },
+      "payload": { "item_id": "bronze_key", "item_name": "Bronze Key", "room": 2 }
+    },
+    {
+      "event_id": "event-demo-1002-001",
+      "event_type": "run_abandoned",
+      "user_id": { "$numberLong": "1002" },
+      "run_id": "run-demo-1002-001",
+      "occurred_at": { "$date": "2026-01-15T12:00:00Z" },
+      "payload": { "room": 2, "reason": "player_left" },
+      "client_context": { "platform": "web", "locale": "en" }
+    }
+  ]
+}
