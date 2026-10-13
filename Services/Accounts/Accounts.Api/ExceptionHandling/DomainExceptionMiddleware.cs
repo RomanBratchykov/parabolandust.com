@@ -1,9 +1,13 @@
 using Accounts.Domain.Exceptions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Accounts.Api.ExceptionHandling;
 
-public sealed class DomainExceptionMiddleware(RequestDelegate next, ILogger<DomainExceptionMiddleware> logger)
+public sealed class DomainExceptionMiddleware(
+    RequestDelegate next,
+    ILogger<DomainExceptionMiddleware> logger,
+    IProblemDetailsService problemDetails)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -31,14 +35,19 @@ public sealed class DomainExceptionMiddleware(RequestDelegate next, ILogger<Doma
             }
 
             context.Response.StatusCode = status;
-            await context.Response.WriteAsJsonAsync(new ProblemDetails
+            await problemDetails.TryWriteAsync(new ProblemDetailsContext
             {
-                Status = status,
-                Title = title,
-                Detail = detail,
-                Instance = context.Request.Path,
-                Extensions = { ["traceId"] = context.TraceIdentifier }
-            }, contentType: "application/problem+json", cancellationToken: context.RequestAborted);
+                HttpContext = context,
+                Exception = exception,
+                ProblemDetails = new ProblemDetails
+                {
+                    Status = status,
+                    Title = title,
+                    Detail = detail,
+                    Instance = context.Request.Path,
+                    Extensions = { ["traceId"] = context.TraceIdentifier }
+                }
+            });
         }
     }
 }
