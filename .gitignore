@@ -5,6 +5,3 @@
 **/bin/
 **/obj/
 *.dll
-Services/Newsletters/Newsletters.Api/binDebug
-Services/Newsletters/Newsletters.Dal/binDebug
-
