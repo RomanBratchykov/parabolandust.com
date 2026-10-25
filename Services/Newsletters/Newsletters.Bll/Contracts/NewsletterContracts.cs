@@ -25,18 +25,18 @@ public sealed record UserCommentDto(long Id, long UserId, string UserName, strin
     DateTimeOffset CreatedAt, bool IsHidden);
 
 public sealed record CreateNewsletterRequest(
-    [property: Range(1, long.MaxValue)] long AdminId,
-    [property: Required, StringLength(200, MinimumLength = 1)] string Title,
-    [property: Required, MinLength(1)] string MainInfo,
-    [property: StringLength(2048)] string? ImageUrl);
+    [Range(1, long.MaxValue)] long AdminId,
+    [Required, StringLength(200, MinimumLength = 1)] string Title,
+    [Required, MinLength(1)] string MainInfo,
+    [StringLength(2048)] string? ImageUrl);
 
 public sealed record PublishNewsletterRequest(
-    [property: Required, StringLength(100, MinimumLength = 1)] string PublishedBy);
+    [Required, StringLength(100, MinimumLength = 1)] string PublishedBy);
 
 public sealed record NewsletterQuery(
-    [property: Range(1, int.MaxValue)] int Page = 1,
-    [property: Range(1, 100)] int PageSize = 20,
-    [property: StringLength(200)] string? Search = null,
+    [Range(1, int.MaxValue)] int Page = 1,
+    [Range(1, 100)] int PageSize = 20,
+    [StringLength(200)] string? Search = null,
     long? AdminId = null,
     bool? IsHidden = null,
     DateTimeOffset? PublishedAfter = null,
@@ -59,8 +59,8 @@ public sealed record UserSubscriptionDto(long Id, long NewsletterId, string News
 public sealed record SubscriberDto(long Id, string UserName, string? Email);
 
 public sealed record CreateSubscriptionRequest(
-    [property: Range(1, long.MaxValue)] long UserId,
-    [property: Range(1, long.MaxValue)] long NewsletterId);
+    [Range(1, long.MaxValue)] long UserId,
+    [Range(1, long.MaxValue)] long NewsletterId);
 
 public sealed record SubscriptionDto(
     long Id,
