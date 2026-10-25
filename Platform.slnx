@@ -1,4 +1,12 @@
 <Solution>
+  <Folder Name="/Services/" />
+  <Folder Name="/Services/Newsletters/">
+    <Project Path="Services/Newsletters/Newsletters.Api/Newsletters.Api.csproj" />
+    <Project Path="Services/Newsletters/Newsletters.Bll/Newsletters.Bll.csproj" />
+    <Project Path="Services/Newsletters/Newsletters.Dal/Newsletters.Dal.csproj" />
+    <Project Path="Services/Newsletters/Newsletters.Domain/Newsletters.Domain.csproj" />
+    <Project Path="Services/Newsletters/Newsletters.Tests/Newsletters.Tests.csproj" />
+  </Folder>
   <Project Path="Services/Accounts/Accounts.Api/Accounts.Api.csproj" />
   <Project Path="Services/Accounts/Accounts.AppHost/Accounts.AppHost.csproj" />
   <Project Path="Services/Accounts/Accounts.Bll/Accounts.Bll.csproj" />
