@@ -190,3 +190,59 @@ The HTTPS developer-certificate warning does not cause the DCP timeout. Trust th
 ```bash
 dotnet dev-certs https --trust
 ```
+
+## Newsletter service (Lab 3)
+
+The Newsletters service owns the Project 2 PostgreSQL schema. It uses a
+separate, empty database for EF Core Code-First migrations so it does not try
+to recreate tables in the already initialized Lab 1 database.
+
+Create an empty database named `newsletters_lab3` in PostgreSQL, then set the
+connection string and start the API:
+
+```bash
+ConnectionStrings__NewslettersDb='Host=localhost;Port=5432;Database=newsletters_lab3;Username=postgres;Password=secret' \
+  dotnet run --project Services/Newsletters/Newsletters.Api
+```
+
+In Development the API applies the repository migrations and seeds the sample
+newsletter, delivery settings, and subscription. Fixed admin and user-copy
+rows are migration seeds. The application checks for an existing newsletter
+before adding the programmatic sample seed. In Production it applies migrations
+but skips the sample seed. Do not point this initial migration at an existing
+`accounts_db_p2` database; use a new database with the same Project 2 schema.
+
+To apply the migration manually or regenerate its SQL script, install the EF
+tool and run these commands from the repository root:
+
+```bash
+dotnet tool install --global dotnet-ef --version 10.0.4
+ConnectionStrings__NewslettersDb='Host=localhost;Port=5432;Database=newsletters_lab3;Username=postgres;Password=secret' \
+  dotnet ef database update \
+  --project Services/Newsletters/Newsletters.Dal \
+  --startup-project Services/Newsletters/Newsletters.Api
+ConnectionStrings__NewslettersDb='Host=localhost;Port=5432;Database=newsletters_lab3;Username=postgres;Password=secret' \
+  dotnet ef migrations script \
+  --project Services/Newsletters/Newsletters.Dal \
+  --startup-project Services/Newsletters/Newsletters.Api \
+  --output Services/Newsletters/Newsletters.Dal/Migrations/InitialCreate.sql
+```
+
+Swagger is available at `/swagger` in Development. The API routes are:
+
+- `GET /api/newsletters?page=2&pageSize=5&search=update&sortBy=publishedAt&sortDir=desc`
+- `GET /api/newsletters/{id}` and `GET /api/newsletters/{id}/details`
+- `POST /api/newsletters` with `adminId`, `title`, `mainInfo`, and optional `imageUrl`
+- `POST /api/newsletters/{id}/publish` with `publishedBy`
+- `GET /api/newsletters/{id}/subscribers?since=2026-01-01T00:00:00Z`
+- `GET /api/users-copy/{userId}/subscriptions` (explicit loading)
+- `POST /api/subscriptions` with `userId` and `newsletterId`; a duplicate pair returns 409
+- `GET /api/subscriptions/{id}`
+
+Filtering, sorting, count, and pagination are applied by EF Core before
+materialization. EF command logging is enabled at Information level so a
+newsletter details request can be checked for one eager-loading SELECT, while
+the user-copy subscriptions request shows the base query and explicit-load
+SELECT. Serilog writes structured console logs with `CorrelationId`, `UserId`,
+and `RequestPath`. Set `AutoMapper__LicenseKey` if a licensed key is available;
+AutoMapper logs a warning when no key is configured.
