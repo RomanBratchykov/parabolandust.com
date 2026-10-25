@@ -193,39 +193,54 @@ dotnet dev-certs https --trust
 
 ## Newsletter service (Lab 3)
 
-The Newsletters service owns the Project 2 PostgreSQL schema. It uses a
-separate, empty database for EF Core Code-First migrations so it does not try
-to recreate tables in the already initialized Lab 1 database.
+The Newsletters service implements Lab 3 with EF Core Code-First and PostgreSQL.
+It uses its own `newsletters_lab3` database, separate from the Lab 1 databases.
 
-Create an empty database named `newsletters_lab3` in PostgreSQL, then set the
-connection string and start the API:
+### Run the lab
 
-```bash
-ConnectionStrings__NewslettersDb='Host=localhost;Port=5432;Database=newsletters_lab3;Username=postgres;Password=secret' \
-  dotnet run --project Services/Newsletters/Newsletters.Api
+Requirements: .NET 10 SDK, Docker Desktop (or a compatible Docker engine), and
+PowerShell or Bash (Git Bash, WSL, or Linux). From the repository root, run one
+of these:
+
+```powershell
+./scripts/run-lab3.ps1
 ```
 
-In Development the API applies the repository migrations and seeds the sample
-newsletter, delivery settings, and subscription. Fixed admin and user-copy
-rows are migration seeds. The application checks for an existing newsletter
-before adding the programmatic sample seed. In Production it applies migrations
-but skips the sample seed. Do not point this initial migration at an existing
-`accounts_db_p2` database; use a new database with the same Project 2 schema.
-
-To apply the migration manually or regenerate its SQL script, install the EF
-tool and run these commands from the repository root:
-
 ```bash
+bash ./scripts/run-lab3.sh
+```
+
+The script starts the PostgreSQL service from `db/docker-compose.yml`, creates
+the `newsletters_lab3` application database and a separate
+`newsletters_lab3_test` database if they do not exist, runs the Newsletters
+tests, then starts the API. The API applies EF Core migrations at startup and
+adds its sample newsletter, delivery settings, and subscription in Development.
+Fixed admin and user-copy rows are migration seeds. Re-running the script keeps
+the databases and seed data in the existing PostgreSQL container. Removing or
+recreating that container resets its data. Stop the API with `Ctrl+C`.
+Both runners set `NUGET_EXE` to
+`C:\Users\Roman\AppData\Local\Microsoft\WinGet\Links\nuget.exe` and add its
+directory to `PATH` for the duration of the script when that executable is
+accessible. The .NET SDK still performs package restore through its configured
+NuGet sources.
+
+The script uses the local Compose credentials (`postgres` / `secret`) on port
+5432. To use another PostgreSQL instance, set `ConnectionStrings__NewslettersDb`
+and start the API directly:
+
+```powershell
+$env:ConnectionStrings__NewslettersDb = "Host=localhost;Port=5432;Database=newsletters_lab3;Username=postgres;Password=secret"
+dotnet run --project Services/Newsletters/Newsletters.Api
+```
+
+To apply migrations manually or regenerate the SQL migration script, install
+the EF tool and run these commands from the repository root:
+
+```powershell
 dotnet tool install --global dotnet-ef --version 10.0.4
-ConnectionStrings__NewslettersDb='Host=localhost;Port=5432;Database=newsletters_lab3;Username=postgres;Password=secret' \
-  dotnet ef database update \
-  --project Services/Newsletters/Newsletters.Dal \
-  --startup-project Services/Newsletters/Newsletters.Api
-ConnectionStrings__NewslettersDb='Host=localhost;Port=5432;Database=newsletters_lab3;Username=postgres;Password=secret' \
-  dotnet ef migrations script \
-  --project Services/Newsletters/Newsletters.Dal \
-  --startup-project Services/Newsletters/Newsletters.Api \
-  --output Services/Newsletters/Newsletters.Dal/Migrations/InitialCreate.sql
+$env:ConnectionStrings__NewslettersDb = "Host=localhost;Port=5432;Database=newsletters_lab3;Username=postgres;Password=secret"
+dotnet ef database update --project Services/Newsletters/Newsletters.Dal --startup-project Services/Newsletters/Newsletters.Api
+dotnet ef migrations script --project Services/Newsletters/Newsletters.Dal --startup-project Services/Newsletters/Newsletters.Api --output Services/Newsletters/Newsletters.Dal/Migrations/InitialCreate.sql
 ```
 
 Swagger is available at `/swagger` in Development. The API routes are:
