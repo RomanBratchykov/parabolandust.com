@@ -6,7 +6,15 @@ $postgresContainer = "pg-test"
 $testDatabase = "newsletters_lab3_test"
 $applicationDatabase = "newsletters_lab3"
 $postgresPassword = "secret"
-$nugetExe = "C:\Users\Roman\AppData\Local\Microsoft\WinGet\Links\nuget.exe"
+$platform = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
+        [System.Runtime.InteropServices.OSPlatform]::Windows)) {
+    'Windows'
+} elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
+        [System.Runtime.InteropServices.OSPlatform]::Linux)) {
+    'Linux'
+} else {
+    throw 'This script supports Windows and Linux.'
+}
 $testConnection = "Host=localhost;Port=5432;Database=$testDatabase;Username=postgres;Password=$postgresPassword"
 $applicationConnection = "Host=localhost;Port=5432;Database=$applicationDatabase;Username=postgres;Password=$postgresPassword"
 
@@ -37,12 +45,8 @@ function Ensure-Database {
 
 Push-Location $repositoryRoot
 $previousPath = $env:PATH
-$previousNugetExe = $env:NUGET_EXE
 $previousTestConnection = $env:NEWSLETTERS_TEST_CONNECTION
 $previousApplicationConnection = $env:ConnectionStrings__NewslettersDb
-$env:NUGET_EXE = $nugetExe
-$env:PATH = "$(Split-Path -Parent $nugetExe);$env:PATH"
-
 try {
     Invoke-CheckedCommand "docker" @("compose", "-f", $composeFile, "up", "-d", "db")
 
@@ -70,7 +74,6 @@ try {
 }
 finally {
     $env:PATH = $previousPath
-    $env:NUGET_EXE = $previousNugetExe
     $env:NEWSLETTERS_TEST_CONNECTION = $previousTestConnection
     $env:ConnectionStrings__NewslettersDb = $previousApplicationConnection
     Pop-Location

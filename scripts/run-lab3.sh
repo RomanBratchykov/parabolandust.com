@@ -9,20 +9,11 @@ test_database="newsletters_lab3_test"
 application_database="newsletters_lab3"
 postgres_password="secret"
 
-nuget_windows_path='C:\Users\Roman\AppData\Local\Microsoft\WinGet\Links\nuget.exe'
-if command -v cygpath >/dev/null 2>&1; then
-    nuget_exe="$(cygpath -u "$nuget_windows_path")"
-elif [[ -x /mnt/c/Users/Roman/AppData/Local/Microsoft/WinGet/Links/nuget.exe ]]; then
-    nuget_exe=/mnt/c/Users/Roman/AppData/Local/Microsoft/WinGet/Links/nuget.exe
-elif [[ -x /c/Users/Roman/AppData/Local/Microsoft/WinGet/Links/nuget.exe ]]; then
-    nuget_exe=/c/Users/Roman/AppData/Local/Microsoft/WinGet/Links/nuget.exe
-else
-    nuget_exe="$nuget_windows_path"
-fi
-export NUGET_EXE="$nuget_exe"
-if [[ -x "$nuget_exe" ]]; then
-    export PATH="$(dirname "$nuget_exe"):$PATH"
-fi
+platform="$(uname -s)"
+case "$platform" in
+    Linux*|MINGW*|MSYS*|CYGWIN*) ;;
+    *) echo "Unsupported platform: $platform (expected Windows or Linux)." >&2; exit 1 ;;
+esac
 
 test_connection="Host=localhost;Port=5432;Database=$test_database;Username=postgres;Password=$postgres_password"
 application_connection="Host=localhost;Port=5432;Database=$application_database;Username=postgres;Password=$postgres_password"

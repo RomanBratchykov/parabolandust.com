@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/bin/**;**/obj/**;**/bin?Debug/**;**/bin?Release/**;**/obj?Debug/**;**/obj?Release/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <BaseIntermediateOutputPath>obj/windows/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/windows/</BaseOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <BaseIntermediateOutputPath>obj/linux/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/linux/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

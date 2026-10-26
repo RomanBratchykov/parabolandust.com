@@ -217,12 +217,21 @@ tests, then starts the API. The API applies EF Core migrations at startup and
 adds its sample newsletter, delivery settings, and subscription in Development.
 Fixed admin and user-copy rows are migration seeds. Re-running the script keeps
 the databases and seed data in the existing PostgreSQL container. Removing or
-recreating that container resets its data. Stop the API with `Ctrl+C`.
-Both runners set `NUGET_EXE` to
-`C:\Users\Roman\AppData\Local\Microsoft\WinGet\Links\nuget.exe` and add its
-directory to `PATH` for the duration of the script when that executable is
-accessible. The .NET SDK still performs package restore through its configured
-NuGet sources.
+recreating that container resets its data. Stop the API with `Ctrl+C`. The
+runners detect Windows or Linux before starting. .NET build outputs use separate
+`bin/windows` / `obj/windows` and `bin/linux` / `obj/linux` folders, so Windows
+and WSL/Linux builds do not reuse each other's intermediate files.
+
+### Create a service scaffold
+
+Run the cross-platform PowerShell script with a service name made of letters
+and digits, starting with a letter. PowerShell 7 (`pwsh`) is required on Linux.
+It detects Windows or Linux, then creates `Domain`, `Dal`, `Bll`, and `Api`
+projects under `Services/<Name>` and adds them to `Platform.slnx`:
+
+```powershell
+./scripts/new-service.ps1 Payments
+```
 
 The script uses the local Compose credentials (`postgres` / `secret`) on port
 5432. To use another PostgreSQL instance, set `ConnectionStrings__NewslettersDb`
