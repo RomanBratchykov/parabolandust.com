@@ -67,7 +67,11 @@ try {
     Ensure-Database $applicationDatabase
 
     $env:NEWSLETTERS_TEST_CONNECTION = $testConnection
-    Invoke-CheckedCommand "dotnet" @("test", "Services/Newsletters/Newsletters.Tests/Newsletters.Tests.csproj")
+    Invoke-CheckedCommand "dotnet" @("test", "Services/Newsletters/Newsletters.Tests/Newsletters.Tests.csproj", "-m:1",
+        "--filter", "FullyQualifiedName!~NewsletterApiTests&FullyQualifiedName!~NewsletterLogTests")
+    Import-Module (Join-Path $PSScriptRoot "modules/NewsletterChecks.psm1") -Force
+    $checkUrl = if ($env:NEWSLETTERS_CHECK_URL) { $env:NEWSLETTERS_CHECK_URL } else { 'http://127.0.0.1:5187' }
+    Invoke-NewsletterChecks -ConnectionString $testConnection -Url $checkUrl
 
     $env:ConnectionStrings__NewslettersDb = $applicationConnection
     Invoke-CheckedCommand "dotnet" @("run", "--project", "Services/Newsletters/Newsletters.Api/Newsletters.Api.csproj")

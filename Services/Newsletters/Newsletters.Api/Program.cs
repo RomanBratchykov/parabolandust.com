@@ -6,6 +6,7 @@ using Newsletters.Dal.Seeding;
 using Serilog;
 using Serilog.Context;
 using Serilog.Events;
+using Serilog.Formatting.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +15,7 @@ builder.Host.UseSerilog((_, logger) => logger
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Information)
     .Enrich.FromLogContext()
-    .WriteTo.Console());
+    .WriteTo.Console(new JsonFormatter()));
 
 builder.Services.AddNewslettersBll(builder.Configuration);
 builder.Services.AddControllers();
@@ -26,8 +27,6 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
-app.UseSerilogRequestLogging();
 app.Use(async (context, next) =>
 {
     var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
@@ -38,6 +37,8 @@ app.Use(async (context, next) =>
         await next();
     }
 });
+app.UseSerilogRequestLogging();
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

@@ -222,6 +222,17 @@ runners detect Windows or Linux before starting. .NET build outputs use separate
 `bin/windows` / `obj/windows` and `bin/linux` / `obj/linux` folders, so Windows
 and WSL/Linux builds do not reuse each other's intermediate files.
 
+The runners also invoke `scripts/modules/newsletter-checks.sh` (Bash) or
+`scripts/modules/NewsletterChecks.psm1` (PowerShell). These start a temporary API
+against `newsletters_lab3_test`, capture its console output in a temporary log
+file, and run all seven HTTP checks plus the structured logging check. The API
+is stopped after the checks, including on failure. Log paths are printed and
+the files are kept for inspection. A failed check stops the runner before it
+launches the application API. The HTTP checks add sample rows to the test database.
+The check API uses `http://127.0.0.1:5187`; set `NEWSLETTERS_CHECK_URL` to another
+free localhost URL if needed. Bash checks require `curl` and use the platform's
+build output (`linux` on WSL/Linux, `windows` on Git Bash).
+
 ### Create a service scaffold
 
 Run the cross-platform PowerShell script with a service name made of letters

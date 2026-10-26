@@ -49,7 +49,9 @@ ensure_database "$test_database"
 ensure_database "$application_database"
 
 export NEWSLETTERS_TEST_CONNECTION="$test_connection"
-dotnet test Services/Newsletters/Newsletters.Tests/Newsletters.Tests.csproj
+dotnet test Services/Newsletters/Newsletters.Tests/Newsletters.Tests.csproj -m:1 \
+    --filter 'FullyQualifiedName!~NewsletterApiTests&FullyQualifiedName!~NewsletterLogTests'
+bash "$script_dir/modules/newsletter-checks.sh"
 
 export ConnectionStrings__NewslettersDb="$application_connection"
 dotnet run --project Services/Newsletters/Newsletters.Api/Newsletters.Api.csproj
