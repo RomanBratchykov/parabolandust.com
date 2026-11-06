@@ -1,12 +1,17 @@
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Newsletters.Bll;
 using Newsletters.Bll.Contracts;
+using Newsletters.Bll.Services;
 using Newsletters.Bll.Specifications;
 using Newsletters.Dal.Data;
 using Newsletters.Dal.Repositories;
 using Newsletters.Dal.Seeding;
 using Newsletters.Domain.Models;
+using Newsletters.Domain.Exceptions;
 using Xunit;
 
 namespace Newsletters.Tests;
@@ -23,6 +28,36 @@ public sealed class PostgresFactAttribute : FactAttribute
 [Collection("Lab 3 database")]
 public sealed class NewsletterPostgresTests
 {
+    [PostgresFact]
+    public async Task Publishing_a_deleted_newsletter_returns_not_found_without_changing_it()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:NewslettersDb"] = Environment.GetEnvironmentVariable("NEWSLETTERS_TEST_CONNECTION")
+        }).Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddNewslettersBll(configuration);
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<NewslettersDbContext>();
+        await context.Database.MigrateAsync();
+        await DbInitializer.SeedAsync(context);
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        var newsletter = new Newsletter(4001, "Deleted newsletter", "Release notes");
+        context.Newsletters.Add(newsletter);
+        context.Entry(newsletter).Property(value => value.IsDeleted).CurrentValue = true;
+        await context.SaveChangesAsync();
+        var service = scope.ServiceProvider.GetRequiredService<INewsletterService>();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            service.PublishAsync(newsletter.Id, new PublishNewsletterRequest("editor_demo")));
+
+        await context.Entry(newsletter).ReloadAsync();
+        Assert.True(newsletter.IsHidden);
+        Assert.Null(newsletter.PublishedAt);
+    }
+
     [PostgresFact]
     public async Task Migrations_and_repeated_seeding_preserve_one_sample_graph()
     {

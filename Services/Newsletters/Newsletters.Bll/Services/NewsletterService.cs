@@ -59,6 +59,8 @@ public sealed class NewsletterService(IUnitOfWork unitOfWork, IMapper mapper) : 
     {
         var newsletter = await unitOfWork.Newsletters.GetByIdAsync(id, cancellationToken)
             ?? throw new EntityNotFoundException($"Newsletter {id} was not found.");
+        if (newsletter.IsDeleted)
+            throw new EntityNotFoundException($"Newsletter {id} was not found.");
         if (!newsletter.IsHidden)
             throw new ConflictException($"Newsletter {id} has already been published.");
 

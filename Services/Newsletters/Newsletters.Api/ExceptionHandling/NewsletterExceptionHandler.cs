@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -49,7 +47,7 @@ public sealed class NewsletterExceptionHandler(
     private static int GetStatusCode(Exception exception) => exception switch
     {
         EntityNotFoundException => StatusCodes.Status404NotFound,
-        ConflictException or DomainException => StatusCodes.Status409Conflict,
+        ConflictException or DomainException or DbUpdateConcurrencyException => StatusCodes.Status409Conflict,
         FluentValidation.ValidationException or System.ComponentModel.DataAnnotations.ValidationException or ArgumentException
             => StatusCodes.Status400BadRequest,
         DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } }

@@ -35,7 +35,7 @@ public sealed class NewsletterLogTests
                 && correlation.GetString() == traceId)
             .ToList();
 
-        var error = Assert.Single(events.Where(log => log.TryGetProperty("Exception", out _)));
+        var error = Assert.Single(events, log => log.TryGetProperty("Exception", out _));
         Assert.Equal("anonymous", error.GetProperty("Properties").GetProperty("UserId").GetString());
         Assert.Equal("/api/newsletters/9223372036854775807",
             error.GetProperty("Properties").GetProperty("RequestPath").GetString());

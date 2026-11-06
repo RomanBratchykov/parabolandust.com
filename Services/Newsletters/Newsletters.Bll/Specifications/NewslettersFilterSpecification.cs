@@ -22,7 +22,6 @@ public sealed class NewslettersFilterSpecification : Specification<Newsletter>
         if (query.PublishedAfter is not null)
             AddCriteria(newsletter => newsletter.PublishedAt >= query.PublishedAfter.Value);
 
-        AddInclude(nameof(Newsletter.DeliverySettings));
         SetOrder(GetSortExpression(query.SortBy), string.Equals(query.SortDir, "desc", StringComparison.OrdinalIgnoreCase));
         SetPagination((query.Page - 1) * pageSize, pageSize);
     }

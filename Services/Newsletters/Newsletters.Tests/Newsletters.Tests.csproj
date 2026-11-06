@@ -22,6 +22,7 @@
     <ProjectReference Include="..\Newsletters.Domain\Newsletters.Domain.csproj" />
     <ProjectReference Include="..\Newsletters.Dal\Newsletters.Dal.csproj" />
     <ProjectReference Include="..\Newsletters.Bll\Newsletters.Bll.csproj" />
+    <ProjectReference Include="..\Newsletters.Api\Newsletters.Api.csproj" />
   </ItemGroup>
 
 </Project>
