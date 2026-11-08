@@ -1,6 +1,10 @@
 <Solution>
   <Project Path="Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
   <Folder Name="/Services/" />
+  <Folder Name="/Services/GameStats/">
+    <Project Path="Services/GameStats/GameStats.Domain/GameStats.Domain.csproj" />
+    <Project Path="Services/GameStats/GameStats.Application/GameStats.Application.csproj" />
+  </Folder>
   <Folder Name="/Services/Newsletters/">
     <Project Path="Services/Newsletters/Newsletters.Api/Newsletters.Api.csproj" />
     <Project Path="Services/Newsletters/Newsletters.Bll/Newsletters.Bll.csproj" />
