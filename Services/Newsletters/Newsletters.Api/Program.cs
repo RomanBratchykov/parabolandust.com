@@ -3,19 +3,13 @@ using Newsletters.Api.ExceptionHandling;
 using Newsletters.Bll;
 using Newsletters.Dal.Data;
 using Newsletters.Dal.Seeding;
+using Platform.ServiceDefaults;
 using Serilog;
 using Serilog.Context;
-using Serilog.Events;
-using Serilog.Formatting.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((_, logger) => logger
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Information)
-    .Enrich.FromLogContext()
-    .WriteTo.Console(new JsonFormatter()));
+builder.AddServiceDefaults();
 
 builder.Services.AddNewslettersBll(builder.Configuration);
 builder.Services.AddControllers();
@@ -27,10 +21,10 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.Use(async (context, next) =>
 {
     var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
-    using (LogContext.PushProperty("CorrelationId", context.TraceIdentifier))
     using (LogContext.PushProperty("UserId", userId))
     using (LogContext.PushProperty("RequestPath", context.Request.Path))
     {
@@ -47,6 +41,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.MapDefaultEndpoints();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
