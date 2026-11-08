@@ -1,4 +1,6 @@
 using AutoMapper;
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Newsletters.Bll.Contracts;
 using Newsletters.Bll.Specifications;
 using Newsletters.Dal;
@@ -7,8 +9,11 @@ using Newsletters.Domain.Models;
 
 namespace Newsletters.Bll.Services;
 
-public sealed class NewsletterService(IUnitOfWork unitOfWork, IMapper mapper) : INewsletterService
+public sealed class NewsletterService(
+    IUnitOfWork unitOfWork, IMapper mapper, ILogger<NewsletterService> logger) : INewsletterService
 {
+    private static readonly ActivitySource Source = new("Platform.Newsletters");
+
     public async Task<PagedResult<NewsletterDto>> GetListAsync(
         NewsletterQuery query, CancellationToken cancellationToken = default)
     {
@@ -57,6 +62,8 @@ public sealed class NewsletterService(IUnitOfWork unitOfWork, IMapper mapper) : 
     public async Task PublishAsync(
         long id, PublishNewsletterRequest request, CancellationToken cancellationToken = default)
     {
+        using var activity = Source.StartActivity("PublishNewsletter");
+        activity?.SetTag("newsletter.id", id);
         var newsletter = await unitOfWork.Newsletters.GetByIdAsync(id, cancellationToken)
             ?? throw new EntityNotFoundException($"Newsletter {id} was not found.");
         if (newsletter.IsDeleted)
@@ -67,6 +74,7 @@ public sealed class NewsletterService(IUnitOfWork unitOfWork, IMapper mapper) : 
         newsletter.Publish(request.PublishedBy, DateTimeOffset.UtcNow);
         unitOfWork.Newsletters.Update(newsletter);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Newsletter {NewsletterId} published", id);
     }
 
     public async Task<UserSubscriptionsDto> GetUserSubscriptionsAsync(
