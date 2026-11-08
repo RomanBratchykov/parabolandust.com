@@ -6,16 +6,21 @@ using Accounts.Domain.Exceptions;
 using Accounts.Domain.Models;
 using AutoMapper;
 using Npgsql;
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 public sealed class AccountsService : IAccountsService
 {
+    private static readonly ActivitySource Source = new("Platform.Accounts");
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly ILogger<AccountsService> _logger;
 
-    public AccountsService(IUnitOfWork unitOfWork, IMapper mapper)
+    public AccountsService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<AccountsService> logger)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<UserResponse?> GetUserAsync(long userId, CancellationToken cancellationToken = default)
@@ -26,6 +31,7 @@ public sealed class AccountsService : IAccountsService
 
     public async Task<long> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
     {
+        using var activity = Source.StartActivity("CreateUser");
         if ((request.OAuthProvider is null) != (request.OAuthId is null))
             throw new ValidationException("OAuth provider and OAuth ID must be provided together.");
         var hasOAuthIdentity = request.OAuthProvider is not null;
@@ -56,6 +62,8 @@ public sealed class AccountsService : IAccountsService
                     new UserAchievement { UserId = userId, AchievementId = initialAchievementId }, cancellationToken);
             }
             await _unitOfWork.CommitAsync(cancellationToken);
+            activity?.SetTag("user.id", userId);
+            _logger.LogInformation("Account created for user {UserId}", userId);
             return userId;
         }
         catch (PostgresException exception) when (exception.SqlState == "23505")
