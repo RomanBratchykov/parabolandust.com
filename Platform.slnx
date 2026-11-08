@@ -4,6 +4,8 @@
   <Folder Name="/Services/GameStats/">
     <Project Path="Services/GameStats/GameStats.Domain/GameStats.Domain.csproj" />
     <Project Path="Services/GameStats/GameStats.Application/GameStats.Application.csproj" />
+    <Project Path="Services/GameStats/GameStats.Infrastructure/GameStats.Infrastructure.csproj" />
+    <Project Path="Services/GameStats/GameStats.WebApi/GameStats.WebApi.csproj" />
   </Folder>
   <Folder Name="/Services/Newsletters/">
     <Project Path="Services/Newsletters/Newsletters.Api/Newsletters.Api.csproj" />

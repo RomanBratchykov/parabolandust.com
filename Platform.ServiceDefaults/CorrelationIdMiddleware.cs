@@ -22,6 +22,12 @@ public sealed class CorrelationIdMiddleware(
         // Both YARP and outgoing HTTP handlers read the normalized request header.
         context.Request.Headers[HeaderName] = correlationId;
         context.Response.Headers[HeaderName] = correlationId;
+        // Exception handling can clear headers before writing ProblemDetails.
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers[HeaderName] = correlationId;
+            return Task.CompletedTask;
+        });
 
         using var logContext = LogContext.PushProperty("CorrelationId", correlationId);
         using var scope = logger.BeginScope(new Dictionary<string, object>
