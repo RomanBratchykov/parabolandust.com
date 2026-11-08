@@ -1,7 +1,9 @@
 using Accounts.Bll;
 using Accounts.Api.ExceptionHandling;
+using Platform.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceDefaults();
 
 var connectionString = builder.Configuration.GetConnectionString("AccountsDb");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -20,6 +22,7 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<DomainExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {
@@ -32,5 +35,6 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapDefaultEndpoints();
 
 app.Run();
