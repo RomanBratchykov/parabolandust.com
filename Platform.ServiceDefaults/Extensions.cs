@@ -8,6 +8,8 @@ public static class Extensions
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
+        builder.AddDefaultLogging();
+        builder.AddDefaultTelemetry();
         builder.AddDefaultHealthChecks();
         builder.Services.AddServiceDiscovery();
         builder.Services.AddHttpContextAccessor();
