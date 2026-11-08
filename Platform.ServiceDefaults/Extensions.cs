@@ -10,10 +10,13 @@ public static class Extensions
     {
         builder.AddDefaultHealthChecks();
         builder.Services.AddServiceDiscovery();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddTransient<CorrelationIdHandler>();
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
             http.AddStandardResilienceHandler();
             http.AddServiceDiscovery();
+            http.AddHttpMessageHandler<CorrelationIdHandler>();
         });
 
         return builder;
