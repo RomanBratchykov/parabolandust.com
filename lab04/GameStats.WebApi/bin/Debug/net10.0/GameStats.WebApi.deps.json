@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v10.0": {
       "GameStats.WebApi/1.0.0": {
         "dependencies": {
+          "AutoMapper": "16.3.0",
           "GameStats.Application": "1.0.0",
           "GameStats.Infrastructure": "1.0.0",
           "Microsoft.AspNetCore.OpenApi": "10.0.14",
