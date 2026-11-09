@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="GameStats.Application/GameStats.Application.csproj" />
-  <Project Path="GameStats.Domain/GameStats.Domain.csproj" />
-  <Project Path="GameStats.Infrastructure/GameStats.Infrastructure.csproj" />
-  <Project Path="GameStats.WebApi/GameStats.WebApi.csproj" />
-</Solution>
