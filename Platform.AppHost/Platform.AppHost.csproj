@@ -7,6 +7,7 @@
     <UserSecretsId>parabolandust-platform-apphost</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.6.1" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.6.1" />
   </ItemGroup>
 </Project>

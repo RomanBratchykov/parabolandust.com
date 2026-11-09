@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
   <Project Path="Platform.AppHost/Platform.AppHost.csproj" />
+  <Project Path="Platform.ApiGateway/Platform.ApiGateway.csproj" />
   <Folder Name="/Services/" />
   <Folder Name="/Services/GameStats/">
     <Project Path="Services/GameStats/GameStats.Domain/GameStats.Domain.csproj" />

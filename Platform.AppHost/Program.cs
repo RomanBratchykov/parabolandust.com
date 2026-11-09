@@ -13,4 +13,10 @@ var postgres = builder.AddPostgres("platform-postgres")
 postgres.AddDatabase("AccountsDb", "accounts_db_p1");
 postgres.AddDatabase("NewslettersDb", "accounts_db_p2");
 
+var mongoPassword = builder.AddParameter("mongo-password", secret: true);
+var mongo = builder.AddMongoDB("platform-mongo", password: mongoPassword)
+    .WithDataVolume("parabolandust-platform-mongo-data");
+
+mongo.AddDatabase("GameStatsDb", "game_stats_db");
+
 builder.Build().Run();
