@@ -6,7 +6,8 @@ db.stats_user.updateOne(
   {
     $setOnInsert: {
       user_id: alexId,
-      user_whoami: "game-link-alex-001", // Copy owned by Project 1.
+        user_whoami: "game-link-alex-001", // Copy owned by Project 1.
+        version: 0,
       updated_at: startedAt,
       enemies: { enemies_killed: 12, enemies_pursued: 3, enemies_forgiven: 1 },
       friends: { friends_made: 2, friends_killed: 0, friends_freed: 1 },
@@ -30,7 +31,8 @@ db.stats_user.updateOne(
   {
     $setOnInsert: {
       user_id: NumberLong("1002"),
-      user_whoami: "game-link-sam-002", // Copy owned by Project 1.
+        user_whoami: "game-link-sam-002", // Copy owned by Project 1.
+        version: 0,
       updated_at: startedAt,
       totals: { times_killed: 4, times_won: 0, time_played: NumberLong("900") },
       progress: { challenges_completed: ["tutorial"] }
@@ -43,7 +45,10 @@ db.runs.updateOne(
   { run_id: "run-demo-1001-001" },
   {
     $setOnInsert: {
-      run_id: "run-demo-1001-001",
+        run_id: "run-demo-1001-001",
+        run_id: "run-demo-1001-001",
+        version: 0,
+        user_id: alexId, // Logical reference to stats_user / Project 1.
       user_id: alexId, // Logical reference to stats_user / Project 1.
       started_at: startedAt,
       ended_at: ISODate("2026-01-15T12:32:00Z"),
@@ -60,7 +65,10 @@ db.runs.updateOne(
   { run_id: "run-demo-1002-001" },
   {
     $setOnInsert: {
-      run_id: "run-demo-1002-001",
+        run_id: "run-demo-1002-001",
+        run_id: "run-demo-1002-001",
+        version: 0,
+        user_id: NumberLong("1002"), // Logical reference to stats_user / Project 1.
       user_id: NumberLong("1002"), // Logical reference to stats_user / Project 1.
       started_at: startedAt,
       ended_at: null,
