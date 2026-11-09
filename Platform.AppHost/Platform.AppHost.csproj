@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.6.1" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.6.1" />
+    <PackageReference Include="Aspire.Hosting.Redis" Version="13.6.1" />
     <ProjectReference Include="..\Services\Accounts\Accounts.Api\Accounts.Api.csproj" IsAspireProjectResource="true" />
     <ProjectReference Include="..\Services\Newsletters\Newsletters.Api\Newsletters.Api.csproj" IsAspireProjectResource="true" />
     <ProjectReference Include="..\Services\GameStats\GameStats.WebApi\GameStats.WebApi.csproj" IsAspireProjectResource="true" />

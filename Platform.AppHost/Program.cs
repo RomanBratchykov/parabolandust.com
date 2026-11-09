@@ -18,21 +18,27 @@ var mongo = builder.AddMongoDB("platform-mongo", password: mongoPassword)
     .WithDataVolume("parabolandust-platform-mongo-data");
 
 var gameStatsDb = mongo.AddDatabase("GameStatsDb", "game_stats_db");
+var redis = builder.AddRedis("redis")
+    .WithDataVolume("parabolandust-platform-redis-data");
 
 var accounts = builder.AddProject<Projects.Accounts_Api>("accounts-api", launchProfileName: "http")
     .WithReference(accountsDb).WaitFor(accountsDb)
+    .WithReference(redis).WaitFor(redis)
     .WithHttpHealthCheck("/health", endpointName: "http");
 var newsletters = builder.AddProject<Projects.Newsletters_Api>("newsletters-api", launchProfileName: "http")
     .WithReference(newslettersDb).WaitFor(newslettersDb)
+    .WithReference(redis).WaitFor(redis)
     .WithHttpHealthCheck("/health", endpointName: "http");
 var gameStats = builder.AddProject<Projects.GameStats_WebApi>("gamestats-api")
     .WithHttpEndpoint(name: "http")
     .WithReference(gameStatsDb).WaitFor(gameStatsDb)
+    .WithReference(redis).WaitFor(redis)
     .WithHttpHealthCheck("/health", endpointName: "http");
 
 var aggregator = builder.AddProject<Projects.Platform_Aggregator>("aggregator")
     .WithHttpEndpoint(name: "http")
     .WithReference(accounts).WithReference(newsletters).WithReference(gameStats)
+    .WithReference(redis).WaitFor(redis)
     .WaitFor(accounts).WaitFor(newsletters).WaitFor(gameStats)
     .WithHttpHealthCheck("/health", endpointName: "http");
 
