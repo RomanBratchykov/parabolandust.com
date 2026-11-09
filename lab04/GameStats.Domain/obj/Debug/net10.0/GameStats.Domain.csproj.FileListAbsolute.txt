@@ -1,0 +1,13 @@
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\bin\Debug\net10.0\GameStats.Domain.deps.json
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\bin\Debug\net10.0\GameStats.Domain.dll
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\bin\Debug\net10.0\GameStats.Domain.pdb
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\GameStats.Domain.csproj.AssemblyReference.cache
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\GameStats.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\GameStats.Domain.AssemblyInfoInputs.cache
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\GameStats.Domain.AssemblyInfo.cs
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\GameStats.Domain.csproj.CoreCompileInputs.cache
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\GameStats.Domain.sourcelink.json
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\GameStats.Domain.dll
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\refint\GameStats.Domain.dll
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\GameStats.Domain.pdb
+D:\STUDY\daytelife\dot_\lab04\GameStats.Domain\obj\Debug\net10.0\ref\GameStats.Domain.dll

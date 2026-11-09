@@ -1,0 +1,8 @@
+.vscode
+/uikit
+/tasks
+/tests
+/bin
+/obj
+/.vs
+*.user
