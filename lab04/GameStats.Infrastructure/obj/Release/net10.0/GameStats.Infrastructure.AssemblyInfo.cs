@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GameStats.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7feb5b4de998baa45b341c81a3a030eb0b65203f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+337ffc8df23afb15e7fddb9c1a8e5f8bb608bd86")]
 [assembly: System.Reflection.AssemblyProductAttribute("GameStats.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GameStats.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
