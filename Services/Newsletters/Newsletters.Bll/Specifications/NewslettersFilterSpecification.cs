@@ -23,6 +23,7 @@ public sealed class NewslettersFilterSpecification : Specification<Newsletter>
             AddCriteria(newsletter => newsletter.PublishedAt >= query.PublishedAfter.Value);
 
         SetOrder(GetSortExpression(query.SortBy), string.Equals(query.SortDir, "desc", StringComparison.OrdinalIgnoreCase));
+        SetThenBy(newsletter => newsletter.Id);
         SetPagination((query.Page - 1) * pageSize, pageSize);
     }
 

@@ -281,3 +281,79 @@ the user-copy subscriptions request shows the base query and explicit-load
 SELECT. Serilog writes structured console logs with `CorrelationId`, `UserId`,
 and `RequestPath`. Set `AutoMapper__LicenseKey` if a licensed key is available;
 AutoMapper logs a warning when no key is configured.
+
+## Integrated platform (Lab 5)
+
+Requires the .NET 10 SDK, Docker with a running daemon, and NuGet access for
+the first restore. Set the local database secrets once (replace the placeholders
+with your own values; do not commit them):
+
+```powershell
+dotnet user-secrets set "Parameters:postgres-password" "<postgres-password>" --project Platform.AppHost
+dotnet user-secrets set "Parameters:mongo-password" "<mongo-password>" --project Platform.AppHost
+dotnet run --project Platform.AppHost
+```
+
+Open the Dashboard URL printed by AppHost. It starts persistent PostgreSQL
+and MongoDB, then `accounts-api`, `newsletters-api`, `gamestats-api`,
+`aggregator`, and `gateway`. The public Gateway listens on `http://localhost:5000`.
+Each HTTP process exposes `/health` (readiness) and `/alive` (liveness).
+In Development, each process also exposes `/swagger`.
+
+The connection names are `AccountsDb`, `NewslettersDb`, and `GameStatsDb`.
+Accounts owns PostgreSQL `accounts_db_p1`; Newsletters owns PostgreSQL
+`accounts_db_p2`; GameStats reads MongoDB `game_stats_db`.
+The platform retains this repository's PostgreSQL services and game-domain
+routes in place of the lab's SQL Server and Orders/Catalog/Reviews examples.
+On a fresh PostgreSQL volume, bootstrap creates both SQL databases and applies
+the existing Accounts schema, seeds, and procedures. Newsletters applies its
+own EF migrations. Restarting AppHost preserves database volumes; bootstrap
+does not rerun against an existing volume.
+
+Gateway forwards these paths without changing HTTP methods or backend paths:
+
+| Paths | Destination |
+| --- | --- |
+| `/api/users`, `/api/donations`, `/api/user-achievements` and subpaths | Accounts |
+| `/api/newsletters`, `/api/subscriptions`, `/api/users-copy` and subpaths | Newsletters |
+| `/api/stats` and subpaths | GameStats |
+| `/api/aggregator` and subpaths | Aggregator |
+
+Request a dashboard for an existing account:
+
+```bash
+curl -i -H 'X-Correlation-Id: lab5-demo' http://localhost:5000/api/aggregator/users/1/dashboard
+```
+
+The aggregator first loads the account, then fetches subscriptions and statistics
+concurrently. A successful response includes `player`, available `subscriptions`
+and `statistics`, and `warnings`. Unavailable optional components are omitted
+and produce warnings; a successful empty subscription list remains `[]`.
+Missing accounts return 404; Accounts failures return 503 or 504 on timeout;
+nonpositive user IDs return 400. Responses use camelCase and omit null fields.
+No password hashes, email addresses, or authentication fields enter this DTO.
+`Downstream:TimeoutSeconds` controls each downstream call's total budget,
+including retries and response-body reading (default 5, supported range 1–30).
+
+For the failure demonstration, stop GameStats or Newsletters in Dashboard,
+repeat the dashboard request, and inspect its warnings and remaining data.
+Restart the service and repeat to observe recovery. GameStats is a read API;
+statistics must already exist for the account to get a full dashboard.
+Use the existing Accounts CRUD and Newsletters creation/subscription routes
+through Gateway to check writes as well as reads.
+
+Find the request in Dashboard Traces to inspect Gateway → Aggregator → services
+and database spans, including the two overlapping optional calls. Filter
+Structured logs by the response's `X-Correlation-Id`; supplied IDs are forwarded,
+and missing IDs are generated even for direct service requests. Inspect service,
+environment, machine, trace/span IDs, routing decisions, latency, and failures.
+Dashboard Metrics exposes HTTP throughput, duration, and errors. Keep resource,
+trace, and filtered-log screenshots locally for submission.
+
+Services can also run independently with `dotnet run --project <project-path>`.
+Set `ConnectionStrings__AccountsDb`, `ConnectionStrings__NewslettersDb`, or
+`ConnectionStrings__GameStatsDb` as appropriate. For standalone Aggregator or
+Gateway, configure logical endpoints such as
+`services__accounts-api__http__0=http://localhost:<accounts-port>` for each
+referenced backend. OTLP export is enabled when `OTEL_EXPORTER_OTLP_ENDPOINT`
+is configured; AppHost supplies discovery and telemetry settings automatically.

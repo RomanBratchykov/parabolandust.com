@@ -2,7 +2,7 @@ namespace Platform.Aggregator.Contracts;
 
 public sealed record PlayerDashboardDto(
     DashboardPlayerDto Player,
-    IReadOnlyList<DashboardSubscriptionDto> Subscriptions,
+    IReadOnlyList<DashboardSubscriptionDto>? Subscriptions,
     DashboardStatisticsDto? Statistics,
     IReadOnlyList<string> Warnings);
 

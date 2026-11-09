@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
 using Platform.Aggregator;
 using Platform.Aggregator.Clients;
+using Platform.Aggregator.Services;
 using Platform.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,7 @@ builder.Services.AddOptions<DownstreamOptions>()
     .ValidateOnStart();
 builder.Services.AddProblemDetails();
 builder.Services.AddDashboardClients();
+builder.Services.AddScoped<PlayerDashboardService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options => options.SwaggerDoc("v1", new OpenApiInfo
 {
