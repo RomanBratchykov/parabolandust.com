@@ -66,3 +66,4 @@ D:\STUDY\daytelife\dot_\lab04\GameStats.WebApi\obj\Debug\net10.0\refint\GameStat
 D:\STUDY\daytelife\dot_\lab04\GameStats.WebApi\obj\Debug\net10.0\GameStats.WebApi.pdb
 D:\STUDY\daytelife\dot_\lab04\GameStats.WebApi\obj\Debug\net10.0\GameStats.WebApi.genruntimeconfig.cache
 D:\STUDY\daytelife\dot_\lab04\GameStats.WebApi\obj\Debug\net10.0\ref\GameStats.WebApi.dll
+D:\STUDY\daytelife\dot_\lab04\GameStats.WebApi\bin\Debug\net10.0\Controllers\appsettings.json

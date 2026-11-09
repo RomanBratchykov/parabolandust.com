@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GameStats.WebApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7feb5b4de998baa45b341c81a3a030eb0b65203f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fa585f272bac9007ad925d314a54e2f6ff2126ab")]
 [assembly: System.Reflection.AssemblyProductAttribute("GameStats.WebApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GameStats.WebApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
