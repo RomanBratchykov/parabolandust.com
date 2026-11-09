@@ -23,9 +23,10 @@ public static class SpecificationEvaluator
 
         if (applyOrdering && specification.OrderBy is not null)
         {
-            query = specification.OrderDescending
+            var ordered = specification.OrderDescending
                 ? query.OrderByDescending(specification.OrderBy)
                 : query.OrderBy(specification.OrderBy);
+            query = specification.ThenBy is null ? ordered : ordered.ThenBy(specification.ThenBy);
         }
 
         if (applyPaging && specification.Skip is not null)

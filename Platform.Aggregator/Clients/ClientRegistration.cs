@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Http.Resilience;
 using Polly.Timeout;
 
 namespace Platform.Aggregator.Clients;
@@ -18,6 +19,7 @@ public static class ClientRegistration
 
     private static void Register<TClient>(IServiceCollection services, string service) where TClient : class
     {
+#pragma warning disable EXTEXP0001 // Required to replace the shared resilience pipeline's timeout budget.
         services.AddHttpClient<TClient>(http =>
         {
             http.BaseAddress = new Uri($"https+http://{service}");
@@ -35,6 +37,7 @@ public static class ClientRegistration
             options.Retry.MaxRetryAttempts = 1;
             options.Retry.Delay = TimeSpan.FromMilliseconds(200);
         });
+#pragma warning restore EXTEXP0001
     }
 }
 
