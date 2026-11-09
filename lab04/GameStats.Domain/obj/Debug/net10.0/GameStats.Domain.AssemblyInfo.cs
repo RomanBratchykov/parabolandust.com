@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GameStats.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4e9c16f408bf4bc3d32e61ed094111bb9bd9d520")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+337ffc8df23afb15e7fddb9c1a8e5f8bb608bd86")]
 [assembly: System.Reflection.AssemblyProductAttribute("GameStats.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GameStats.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
