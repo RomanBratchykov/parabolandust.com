@@ -2,3 +2,6 @@
 /uikit
 /tasks
 /tests
+/bin
+/obj
+/.vs
