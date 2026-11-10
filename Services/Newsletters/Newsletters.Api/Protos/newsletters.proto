@@ -1,0 +1,20 @@
+syntax = "proto3";
+option csharp_namespace = "Newsletters.Grpc";
+package newsletters.v1;
+import "google/protobuf/timestamp.proto";
+// Public player subscription projection; email snapshots remain inside the service.
+service NewslettersReader {
+  rpc GetUserSubscriptions (UserRequest) returns (UserSubscriptionsReply);
+}
+message UserRequest { int64 user_id = 1; }
+message UserSubscriptionsReply {
+  int64 user_id = 1;
+  repeated SubscriptionReply subscriptions = 2;
+}
+message SubscriptionReply {
+  int64 subscription_id = 1;
+  int64 newsletter_id = 2;
+  string title = 3;
+  string status = 4;
+  google.protobuf.Timestamp consent_at = 5;
+}

@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Newsletters.Api.Grpc;
 using Newsletters.Api.ExceptionHandling;
 using Newsletters.Bll;
 using Newsletters.Bll.Caching;
 using Newsletters.Dal.Data;
 using Newsletters.Dal.Seeding;
 using Platform.ServiceDefaults;
+using Platform.ServiceDefaults.Grpc;
 using Platform.Caching;
 using Serilog;
 using Serilog.Context;
@@ -17,6 +20,9 @@ builder.Services.AddPlatformCaching();
 
 builder.Services.AddNewslettersBll(builder.Configuration);
 builder.Services.AddNewslettersCaching();
+builder.WebHost.ConfigureKestrel(options => options.ConfigureEndpointDefaults(endpoint =>
+    endpoint.Protocols = HttpProtocols.Http1AndHttp2));
+builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcLoggingInterceptor>());
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
@@ -46,6 +52,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.MapGrpcService<NewslettersGrpcService>();
 app.MapDefaultEndpoints();
 
 await using (var scope = app.Services.CreateAsyncScope())
