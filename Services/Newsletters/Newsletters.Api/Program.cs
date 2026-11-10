@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Newsletters.Api.ExceptionHandling;
 using Newsletters.Bll;
+using Newsletters.Bll.Caching;
 using Newsletters.Dal.Data;
 using Newsletters.Dal.Seeding;
 using Platform.ServiceDefaults;
@@ -15,6 +16,7 @@ builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks
 builder.Services.AddPlatformCaching();
 
 builder.Services.AddNewslettersBll(builder.Configuration);
+builder.Services.AddNewslettersCaching();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
