@@ -22,15 +22,18 @@ var redis = builder.AddRedis("redis")
     .WithDataVolume("parabolandust-platform-redis-data");
 
 var accounts = builder.AddProject<Projects.Accounts_Api>("accounts-api", launchProfileName: "http")
+    .WithHttpsEndpoint(name: "https")
     .WithReference(accountsDb).WaitFor(accountsDb)
     .WithReference(redis).WaitFor(redis)
     .WithHttpHealthCheck("/health", endpointName: "http");
 var newsletters = builder.AddProject<Projects.Newsletters_Api>("newsletters-api", launchProfileName: "http")
+    .WithHttpsEndpoint(name: "https")
     .WithReference(newslettersDb).WaitFor(newslettersDb)
     .WithReference(redis).WaitFor(redis)
     .WithHttpHealthCheck("/health", endpointName: "http");
 var gameStats = builder.AddProject<Projects.GameStats_WebApi>("gamestats-api")
     .WithHttpEndpoint(name: "http")
+    .WithHttpsEndpoint(name: "https")
     .WithReference(gameStatsDb).WaitFor(gameStatsDb)
     .WithReference(redis).WaitFor(redis)
     .WithHttpHealthCheck("/health", endpointName: "http");
