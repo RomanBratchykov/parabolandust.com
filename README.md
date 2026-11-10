@@ -294,13 +294,13 @@ dotnet user-secrets set "Parameters:mongo-password" "<mongo-password>" --project
 dotnet run --project Platform.AppHost
 ```
 
-Open the Dashboard URL printed by AppHost. It starts persistent PostgreSQL
-and MongoDB, then `accounts-api`, `newsletters-api`, `gamestats-api`,
+Open the Dashboard URL printed by AppHost. It starts persistent PostgreSQL,
+MongoDB, and Redis, then `accounts-api`, `newsletters-api`, `gamestats-api`,
 `aggregator`, and `gateway`. The public Gateway listens on `http://localhost:5000`.
 Each HTTP process exposes `/health` (readiness) and `/alive` (liveness).
 In Development, each process also exposes `/swagger`.
 
-The connection names are `AccountsDb`, `NewslettersDb`, and `GameStatsDb`.
+The connection names are `AccountsDb`, `NewslettersDb`, `GameStatsDb`, and `redis`.
 Accounts owns PostgreSQL `accounts_db_p1`; Newsletters owns PostgreSQL
 `accounts_db_p2`; GameStats reads MongoDB `game_stats_db`.
 The platform retains this repository's PostgreSQL services and game-domain
@@ -322,7 +322,7 @@ Gateway forwards these paths without changing HTTP methods or backend paths:
 Request a dashboard for an existing account:
 
 ```bash
-curl -i -H 'X-Correlation-Id: lab5-demo' http://localhost:5000/api/aggregator/users/1/dashboard
+curl -i -H 'X-Correlation-Id: lab6-demo' http://localhost:5000/api/aggregator/users/1001/dashboard
 ```
 
 The aggregator first loads the account, then fetches subscriptions and statistics
@@ -333,7 +333,9 @@ Missing accounts return 404; Accounts failures return 503 or 504 on timeout;
 nonpositive user IDs return 400. Responses use camelCase and omit null fields.
 No password hashes, email addresses, or authentication fields enter this DTO.
 `Downstream:TimeoutSeconds` controls each downstream call's total budget,
-including retries and response-body reading (default 5, supported range 1–30).
+using a gRPC deadline (default 5, supported range 1–30). Generated gRPC clients
+retain discovery and correlation, remove HTTP resilience retries, and do not
+add a second retry layer.
 
 For the failure demonstration, stop GameStats or Newsletters in Dashboard,
 repeat the dashboard request, and inspect its warnings and remaining data.
@@ -357,3 +359,65 @@ Gateway, configure logical endpoints such as
 `services__accounts-api__http__0=http://localhost:<accounts-port>` for each
 referenced backend. OTLP export is enabled when `OTEL_EXPORTER_OTLP_ENDPOINT`
 is configured; AppHost supplies discovery and telemetry settings automatically.
+
+## Lab 6 cache behavior
+
+Accounts, Newsletters, and GameStats share the manual cache-aside mechanism:
+bounded process memory (L1), Redis (L2), then the existing database reader.
+REST and gRPC call the same cached business operations. Nulls, missing data,
+exceptions, and canceled loads are not cached. Successful empty subscription
+lists are cached.
+
+| Read | L1 sliding / absolute | Redis absolute |
+| --- | --- | --- |
+| Account profile | 40 s / 45 s | 60 s |
+| Newsletter card, details, normalized list | 60 s / 120 s | 300 s |
+| User subscriptions | 40 s / 45 s | 60 s |
+| Player statistics | 40 s / 45 s | 60 s |
+| Complete player dashboard | none | 30 s |
+
+The keyed `Platform.Cache` memory cache has a 10,000-entry limit and every
+entry has size 1. The ordinary framework memory cache remains available for
+unsized framework entries. L2 promotion caps L1 at the payload's remaining
+lifetime. Entry and approximate serialized-byte gauges describe local entries,
+not Redis server memory usage.
+
+Keys are `platform:v1:<domain>:<generation>:<operation>:<identity>`.
+Newsletter list identities hash all normalized filter, ordering, and pagination
+parameters; keys contain no names or email addresses. Redis generation markers
+last 24 hours. Successful account create/update/delete, newsletter create/publish,
+and subscription creation await domain and dashboard invalidation. Canceled local
+tokens prevent an old in-flight read from repopulating a usable L1 entry; old L2
+fills stay under their captured generation. Dashboard fills recheck the shared
+generation and store only complete, consistent responses. Partial dashboards and
+404/503/504 results are never stored. Correlation headers are generated for each
+request and are never cached with a dashboard.
+
+For standalone services, provide Redis in addition to the business database:
+
+```powershell
+$env:ConnectionStrings__redis = "localhost:6379,abortConnect=false"
+```
+
+`/health/cache` on each cache-enabled API and Aggregator returns JSON status
+and per-domain `entries`, `bytes`, `hits`, `misses`, and `invalidations`.
+`/health` is readiness and returns 503 when Redis is unavailable; `/alive`
+remains liveness. Generation gate waits and Redis operations use bounded budgets.
+After startup, Redis failures fall back to the existing source readers. Inspect
+cache logs and the source spans to distinguish fallback from an L1 or L2 hit.
+
+Database commits and Redis invalidation are not atomic. After a committed write,
+invalidation uses its own bounded token, clears local generations even if Redis
+fails, marks affected groups dirty, and retries marker advancement on a later
+read before trusting L2 again. This does not guarantee immediate coherence across
+processes during an outage. Another replica's existing L1 entry can remain until
+its short TTL; durable events and Redis pub/sub are outside this lab.
+GameStats has no owning write API: external MongoDB updates become visible within
+the 60-second service TTL, potentially plus a 30-second dashboard lifetime.
+
+To demonstrate recovery, warm a known record, stop only the Redis resource in
+Aspire, and make a cold valid read. Check that readiness fails while liveness
+and source fallback remain functional; restart Redis and repeat. A new service
+process with empty L1 should obtain an L2 hit. Persistent Redis data survives a
+resource restart. Never flush shared Redis or reset business database volumes
+for a check.

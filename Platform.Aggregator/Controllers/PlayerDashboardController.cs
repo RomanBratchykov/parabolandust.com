@@ -2,12 +2,13 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Platform.Aggregator.Contracts;
 using Platform.Aggregator.Services;
+using Platform.Aggregator.Caching;
 
 namespace Platform.Aggregator.Controllers;
 
 [ApiController]
 [Route("api/aggregator/users")]
-public sealed class PlayerDashboardController(PlayerDashboardService dashboards) : ControllerBase
+public sealed class PlayerDashboardController(PlayerDashboardCache dashboards) : ControllerBase
 {
     [HttpGet("{userId:long}/dashboard")]
     [ProducesResponseType<PlayerDashboardDto>(StatusCodes.Status200OK)]

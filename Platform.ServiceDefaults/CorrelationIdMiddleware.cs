@@ -30,9 +30,13 @@ public sealed class CorrelationIdMiddleware(
         });
 
         using var logContext = LogContext.PushProperty("CorrelationId", correlationId);
+        var transport = context.Request.ContentType?.StartsWith("application/grpc", StringComparison.OrdinalIgnoreCase) == true
+            ? "grpc" : "http";
+        using var transportContext = LogContext.PushProperty("Transport", transport);
         using var scope = logger.BeginScope(new Dictionary<string, object>
         {
-            ["CorrelationId"] = correlationId!
+            ["CorrelationId"] = correlationId!,
+            ["Transport"] = transport
         });
 
         if (generated)

@@ -5,9 +5,13 @@ using Platform.Aggregator;
 using Platform.Aggregator.Clients;
 using Platform.Aggregator.Services;
 using Platform.ServiceDefaults;
+using Platform.Caching;
+using Platform.Aggregator.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+builder.AddRedisDistributedCache("redis", settings => settings.DisableHealthChecks = true);
+builder.Services.AddPlatformCaching();
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -22,6 +26,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddDashboardClients();
 builder.Services.AddGrpcDashboardClients();
 builder.Services.AddScoped<PlayerDashboardService>();
+builder.Services.AddScoped<PlayerDashboardCache>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options => options.SwaggerDoc("v1", new OpenApiInfo
 {

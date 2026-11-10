@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 
 namespace Platform.ServiceDefaults.Grpc;
 
@@ -13,6 +14,8 @@ public sealed class GrpcLoggingInterceptor(ILogger<GrpcLoggingInterceptor> logge
         ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
     {
         var started = Stopwatch.GetTimestamp();
+        using var logContext = LogContext.PushProperty("Transport", "grpc");
+        using var scope = logger.BeginScope(new Dictionary<string, object> { ["Transport"] = "grpc" });
         using var activity = Activities.StartActivity(context.Method, ActivityKind.Internal);
         var method = context.Method.Trim('/').Split('/');
         activity?.SetTag("rpc.system", "grpc");

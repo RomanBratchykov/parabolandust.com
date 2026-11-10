@@ -36,12 +36,13 @@ public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheK
             local is not null && local.Payload.ExpiresAt > clock.GetUtcNow())
         {
             metrics.Hit(group, "L1");
-            LogHit(key, "L1", local.Payload.ExpiresAt, local.Bytes);
+            LogHit(key, "L1", local.Payload.ExpiresAt, local.Bytes, started);
             metrics.Duration(group, "L1", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             return local.Payload.Value;
         }
         metrics.Miss(group, "L1");
-        logger.LogDebug("Cache miss {CacheKey} {CacheLevel}", key, "L1");
+        logger.LogDebug("Cache miss {CacheKey} {CacheLevel}, elapsed {ElapsedMs} ms", key, "L1",
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         metrics.Duration(group, "L1", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
         var generation = await versions.CaptureAsync(group, cancellationToken);
@@ -56,11 +57,12 @@ public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheK
         {
             metrics.Hit(group, "L2");
             StoreMemory(memoryKey, group, policy, payload, bytes!.Length, snapshot);
-            LogHit(key, "L2", payload.ExpiresAt, bytes.Length);
+            LogHit(key, "L2", payload.ExpiresAt, bytes.Length, started);
             return payload.Value;
         }
         metrics.Miss(group, "L2");
-        logger.LogDebug("Cache miss {CacheKey} {CacheLevel}", key, "L2");
+        logger.LogDebug("Cache miss {CacheKey} {CacheLevel}, elapsed {ElapsedMs} ms", key, "L2",
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         var value = await factory(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (value is null) return null;
@@ -164,7 +166,8 @@ public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheK
         logger.LogWarning(exception, "Redis unavailable for {CacheKey}; using source or memory", key);
     }
 
-    private void LogHit(string key, string level, DateTimeOffset expiresAt, int bytes) =>
-        logger.LogDebug("Cache hit {CacheKey} {CacheLevel}, remaining {RemainingMs} ms, {SizeBytes} bytes",
-            key, level, (expiresAt - clock.GetUtcNow()).TotalMilliseconds, bytes);
+    private void LogHit(string key, string level, DateTimeOffset expiresAt, int bytes, long started) =>
+        logger.LogDebug("Cache hit {CacheKey} {CacheLevel}, remaining {RemainingMs} ms, {SizeBytes} bytes, elapsed {ElapsedMs} ms",
+            key, level, (expiresAt - clock.GetUtcNow()).TotalMilliseconds, bytes,
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 }
