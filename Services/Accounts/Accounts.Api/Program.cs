@@ -1,4 +1,5 @@
 using Accounts.Bll;
+using Accounts.Bll.Caching;
 using Accounts.Api.ExceptionHandling;
 using Platform.ServiceDefaults;
 using Platform.Caching;
@@ -18,6 +19,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddAccountsBll(connectionString);
+builder.Services.AddAccountsCaching();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
