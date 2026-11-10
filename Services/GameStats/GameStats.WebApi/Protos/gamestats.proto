@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package gamestats.v1;
+option csharp_namespace = "GameStats.Grpc";
+
+import "google/protobuf/timestamp.proto";
+
+// Read-only statistics projection shared with the REST endpoint.
+service GameStatsReader {
+  rpc GetStatistics (UserRequest) returns (StatisticsReply);
+}
+
+message UserRequest {
+  int64 user_id = 1;
+}
+
+message StatisticsReply {
+  int64 user_id = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  TotalsReply totals = 3;
+}
+
+message TotalsReply {
+  int32 killed = 1;
+  int32 won = 2;
+  // Preserve accumulated play time beyond the 32-bit range.
+  int64 time_played = 3;
+}

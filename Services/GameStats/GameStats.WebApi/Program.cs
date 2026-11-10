@@ -4,13 +4,19 @@ using GameStats.Application.Caching;
 using GameStats.Domain;
 using GameStats.Infrastructure;
 using GameStats.WebApi;
+using GameStats.WebApi.Grpc;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using MongoDB.Driver;
 using OpenTelemetry.Trace;
 using Platform.ServiceDefaults;
 using Platform.Caching;
+using Platform.ServiceDefaults.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+builder.WebHost.ConfigureKestrel(options =>
+    options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
+builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcLoggingInterceptor>());
 
 var connectionString = builder.Configuration.GetConnectionString("GameStatsDb");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -60,4 +66,5 @@ app.MapGet("/api/stats/users/{userId:long}", async Task<IResult> (
     .ProducesProblem(StatusCodes.Status500InternalServerError);
 
 app.MapDefaultEndpoints();
+app.MapGrpcService<GameStatsGrpcService>();
 app.Run();
