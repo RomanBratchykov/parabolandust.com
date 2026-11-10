@@ -15,41 +15,41 @@ public sealed class CacheVersions(IDistributedCache redis, CacheGroupState state
     public async Task<Generation> CaptureAsync(string group, CancellationToken cancellationToken = default)
     {
         var state = states.Get(group);
-        await state.Gate.WaitAsync(cancellationToken);
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(CachePolicy.RedisTimeout);
+        var entered = false;
         try
         {
+            // Queueing and dirty recovery share the generation lookup's bounded budget.
+            await state.Gate.WaitAsync(budget.Token);
+            entered = true;
             if (state.Current.Dirty)
             {
                 var pending = state.Current;
-                if (!await AdvanceAsync(group, cancellationToken))
+                if (!await AdvanceAsync(group, budget.Token))
                     return new("initial", state.Current, false);
                 state.Rotate(false, pending);
                 if (state.Current.Dirty) return new("initial", state.Current, false);
             }
-            using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            budget.CancelAfter(CachePolicy.RedisTimeout);
-            try
+            var bytes = await redis.GetAsync(MarkerKey(group), budget.Token).WaitAsync(budget.Token);
+            cancellationToken.ThrowIfCancellationRequested();
+            var value = bytes is null ? "initial" : Encoding.UTF8.GetString(bytes);
+            if (value != "initial" && !Guid.TryParseExact(value, "N", out _))
             {
-                var bytes = await redis.GetAsync(MarkerKey(group), budget.Token).WaitAsync(budget.Token);
-                cancellationToken.ThrowIfCancellationRequested();
-                var value = bytes is null ? "initial" : Encoding.UTF8.GetString(bytes);
-                if (value != "initial" && !Guid.TryParseExact(value, "N", out _))
-                {
-                    state.MarkDirty();
-                    state.Rotate(true);
-                    logger.LogWarning("Invalid cache generation for {CacheGroup}; bypassing Redis", group);
-                    return new("initial", state.Current, false);
-                }
-                var local = state.Observe(value);
-                return new(value, local, !local.Dirty);
-            }
-            catch (Exception exception) when (IsRedisFailure(exception, cancellationToken))
-            {
-                LogFailure(group, exception);
+                state.MarkDirty();
+                state.Rotate(true);
+                logger.LogWarning("Invalid cache generation for {CacheGroup}; bypassing Redis", group);
                 return new("initial", state.Current, false);
             }
+            var local = state.Observe(value);
+            return new(value, local, !local.Dirty);
         }
-        finally { state.Gate.Release(); }
+        catch (Exception exception) when (IsRedisFailure(exception, cancellationToken))
+        {
+            LogFailure(group, exception);
+            return new("initial", state.Current, false);
+        }
+        finally { if (entered) state.Gate.Release(); }
     }
 
     public async Task<bool> IsCurrentAsync(string group, Generation captured,
