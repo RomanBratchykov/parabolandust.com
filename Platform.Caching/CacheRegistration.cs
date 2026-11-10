@@ -21,6 +21,9 @@ public static class CacheRegistration
         services.AddLogging();
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         services.TryAddSingleton<CacheMetrics>();
+        services.TryAddSingleton<CacheGroupState>();
+        services.TryAddSingleton<CacheVersions>();
+        services.TryAddSingleton<CacheInvalidator>();
         services.TryAddSingleton<ICacheAside, CacheAside>();
         return services;
     }

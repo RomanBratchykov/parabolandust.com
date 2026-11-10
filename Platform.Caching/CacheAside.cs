@@ -4,12 +4,14 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using StackExchange.Redis;
 
 namespace Platform.Caching;
 
 public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheKey)] IMemoryCache memory, IDistributedCache redis,
-    CacheMetrics metrics, ILogger<CacheAside> logger, TimeProvider clock) : ICacheAside
+    CacheMetrics metrics, ILogger<CacheAside> logger, TimeProvider clock,
+    CacheGroupState states, CacheVersions versions) : ICacheAside
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -22,13 +24,15 @@ public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheK
         CancellationToken cancellationToken = default) where T : class
     {
         cancellationToken.ThrowIfCancellationRequested();
-        // Slice 4 replaces this fixed generation with coordinated invalidation.
-        var key = CacheKeys.ForRead(group, "initial", operation, identity);
+        var snapshot = states.Capture(group);
+        var memoryKey = CacheKeys.ForRead(group, snapshot.Generation, operation, identity);
+        var key = memoryKey;
         using var activity = CacheMetrics.Activities.StartActivity("cache.read");
         activity?.SetTag("cache.name", group);
         activity?.SetTag("cache.operation", operation);
         var started = Stopwatch.GetTimestamp();
-        if (memory.TryGetValue<MemoryValue<T>>(key, out var local) &&
+        if (!snapshot.Dirty && !snapshot.Token.IsCancellationRequested &&
+            memory.TryGetValue<MemoryValue<T>>(memoryKey, out var local) &&
             local is not null && local.Payload.ExpiresAt > clock.GetUtcNow())
         {
             metrics.Hit(group, "L1");
@@ -40,13 +44,18 @@ public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheK
         logger.LogDebug("Cache miss {CacheKey} {CacheLevel}", key, "L1");
         metrics.Duration(group, "L1", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
-        var (bytes, available) = await ReadRedisAsync(key, group, cancellationToken);
+        var generation = await versions.CaptureAsync(group, cancellationToken);
+        snapshot = generation.Local;
+        memoryKey = CacheKeys.ForRead(group, snapshot.Generation, operation, identity);
+        key = CacheKeys.ForRead(group, generation.Value, operation, identity);
+        var (bytes, available) = generation.Available
+            ? await ReadRedisAsync(key, group, cancellationToken) : (null, false);
         var payload = Deserialize<T>(bytes, key, group);
         if (payload is not null && payload.Version == 1 && payload.Value is not null &&
             payload.ExpiresAt > clock.GetUtcNow())
         {
             metrics.Hit(group, "L2");
-            StoreMemory(key, group, policy, payload, bytes!.Length);
+            StoreMemory(memoryKey, group, policy, payload, bytes!.Length, snapshot);
             LogHit(key, "L2", payload.ExpiresAt, bytes.Length);
             return payload.Value;
         }
@@ -61,7 +70,7 @@ public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheK
         if (available)
             await WriteRedisAsync(key, group, payload.ExpiresAt, bytes, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        StoreMemory(key, group, policy, payload, bytes.Length);
+        StoreMemory(memoryKey, group, policy, payload, bytes.Length, snapshot);
         logger.LogDebug("Cache fill {CacheKey}, TTL {TtlMs} ms, {SizeBytes} bytes, elapsed {ElapsedMs} ms",
             key, policy.DistributedExpiration.TotalMilliseconds, bytes.Length,
             Stopwatch.GetElapsedTime(started).TotalMilliseconds);
@@ -125,8 +134,9 @@ public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheK
     }
 
     private void StoreMemory<T>(string key, string group, CachePolicy policy,
-        CachePayload<T> payload, int bytes)
+        CachePayload<T> payload, int bytes, CacheGroupState.Snapshot snapshot)
     {
+        if (snapshot.Dirty || snapshot.Token.IsCancellationRequested) return;
         var absolute = clock.GetUtcNow().Add(policy.MemoryExpiration);
         if (payload.ExpiresAt < absolute) absolute = payload.ExpiresAt;
         var options = new MemoryCacheEntryOptions
@@ -134,7 +144,8 @@ public sealed class CacheAside([FromKeyedServices(CacheRegistration.MemoryCacheK
             AbsoluteExpiration = absolute,
             SlidingExpiration = policy.SlidingExpiration,
             Size = policy.Size
-        }.RegisterPostEvictionCallback((_, _, reason, _) =>
+        }.AddExpirationToken(new CancellationChangeToken(snapshot.Token))
+        .RegisterPostEvictionCallback((_, _, reason, _) =>
         {
             metrics.MemoryRemoved(group, bytes);
             logger.LogDebug("Cache eviction {CacheKey}: {Reason}", key, reason);
