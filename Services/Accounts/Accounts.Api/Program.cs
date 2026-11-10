@@ -1,11 +1,16 @@
 using Accounts.Bll;
 using Accounts.Bll.Caching;
+using Accounts.Api.Grpc;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Platform.ServiceDefaults.Grpc;
 using Accounts.Api.ExceptionHandling;
 using Platform.ServiceDefaults;
 using Platform.Caching;
 using Platform.ServiceDefaults.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options =>
+    options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
 builder.AddServiceDefaults();
 builder.AddRedisDistributedCache("redis");
 builder.Services.AddPlatformCaching();
@@ -20,6 +25,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddAccountsBll(connectionString);
 builder.Services.AddAccountsCaching();
+builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcLoggingInterceptor>());
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
@@ -42,6 +48,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGrpcService<AccountsGrpcService>();
 app.MapDefaultEndpoints();
 
 app.Run();
