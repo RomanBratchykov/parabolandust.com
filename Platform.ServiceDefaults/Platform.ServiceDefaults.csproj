@@ -20,4 +20,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.17.0" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Platform.Caching/Platform.Caching.csproj" />
+  </ItemGroup>
 </Project>

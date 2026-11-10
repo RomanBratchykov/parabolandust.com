@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Platform.ServiceDefaults.Caching;
 
 namespace Platform.ServiceDefaults;
 
@@ -13,6 +14,7 @@ public static class HealthCheckExtensions
     {
         builder.Services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+        builder.Services.AddCacheHealthChecks();
 
         return builder;
     }
@@ -25,6 +27,7 @@ public static class HealthCheckExtensions
         {
             Predicate = check => check.Tags.Contains("live")
         });
+        app.MapCacheHealthEndpoints();
 
         return app;
     }

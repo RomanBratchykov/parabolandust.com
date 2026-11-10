@@ -7,6 +7,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Platform.Caching;
 
 namespace Platform.ServiceDefaults;
 
@@ -32,11 +33,13 @@ public static class TelemetryExtensions
                     ["deployment.environment.name"] = builder.Environment.EnvironmentName
                 }))
             .WithMetrics(metrics => metrics
+                .AddMeter(CacheMetrics.MeterName)
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation())
             .WithTracing(tracing => tracing
                 .SetSampler(sampler)
+                .AddSource(CacheMetrics.MeterName)
                 .AddSource(builder.Environment.ApplicationName, serviceName,
                     "Platform.*", "Npgsql", "MongoDB.Driver.Core.Extensions.DiagnosticSources")
                 .AddAspNetCoreInstrumentation(options => options.Filter = context =>
