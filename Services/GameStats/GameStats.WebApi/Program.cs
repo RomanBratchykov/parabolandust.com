@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using GameStats.Application;
+using GameStats.Application.Caching;
 using GameStats.Domain;
 using GameStats.Infrastructure;
 using GameStats.WebApi;
 using MongoDB.Driver;
 using OpenTelemetry.Trace;
 using Platform.ServiceDefaults;
+using Platform.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
@@ -15,6 +17,9 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("Connection string 'GameStatsDb' is required.");
 
 builder.Services.AddGameStatsInfrastructure(connectionString);
+builder.AddRedisDistributedCache("redis");
+builder.Services.AddPlatformCaching();
+builder.Services.AddScoped<IPlayerStatisticsService, PlayerStatisticsService>();
 builder.Services.AddOpenTelemetry().WithTracing(tracing => tracing.AddSource(MongoTelemetry.ActivitySourceName));
 builder.Services.AddHealthChecks().AddCheck<MongoReadinessCheck>("mongodb", timeout: TimeSpan.FromSeconds(5));
 builder.Services.AddProblemDetails();
@@ -32,7 +37,7 @@ if (app.Environment.IsDevelopment())
 
 using var source = new ActivitySource("Platform.GameStats");
 app.MapGet("/api/stats/users/{userId:long}", async Task<IResult> (
-    long userId, IPlayerStatisticsRepository repository, ILoggerFactory loggerFactory,
+    long userId, IPlayerStatisticsService service, ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) =>
 {
     if (userId <= 0)
@@ -40,7 +45,7 @@ app.MapGet("/api/stats/users/{userId:long}", async Task<IResult> (
 
     using var activity = source.StartActivity("GetPlayerStatistics");
     activity?.SetTag("user.id", userId);
-    var statistics = await repository.GetByUserIdAsync(userId, cancellationToken);
+    var statistics = await service.GetByUserIdAsync(userId, cancellationToken);
     if (statistics is null)
         return Results.Problem(statusCode: 404, title: "Player statistics not found.");
 

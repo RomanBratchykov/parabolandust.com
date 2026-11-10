@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Platform.Caching\Platform.Caching.csproj" />
     <ProjectReference Include="..\GameStats.Domain\GameStats.Domain.csproj" />
   </ItemGroup>
 </Project>

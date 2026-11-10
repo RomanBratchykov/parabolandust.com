@@ -4,12 +4,15 @@ using Newsletters.Bll;
 using Newsletters.Dal.Data;
 using Newsletters.Dal.Seeding;
 using Platform.ServiceDefaults;
+using Platform.Caching;
 using Serilog;
 using Serilog.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks = true);
+builder.Services.AddPlatformCaching();
 
 builder.Services.AddNewslettersBll(builder.Configuration);
 builder.Services.AddControllers();

@@ -1,9 +1,14 @@
 using Accounts.Bll;
 using Accounts.Api.ExceptionHandling;
 using Platform.ServiceDefaults;
+using Platform.Caching;
+using Platform.ServiceDefaults.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+builder.AddRedisDistributedCache("redis");
+builder.Services.AddPlatformCaching();
+builder.Services.AddCacheHealthChecks();
 
 var connectionString = builder.Configuration.GetConnectionString("AccountsDb");
 if (string.IsNullOrWhiteSpace(connectionString))
