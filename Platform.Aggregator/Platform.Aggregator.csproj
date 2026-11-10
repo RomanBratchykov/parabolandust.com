@@ -5,7 +5,15 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.84.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.36.2" />
+    <PackageReference Include="Grpc.Tools" Version="2.84.0" PrivateAssets="All" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <ProjectReference Include="..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="..\Services\Accounts\Accounts.Api\Protos\accounts.proto" GrpcServices="Client" Link="Protos\accounts.proto" />
+    <Protobuf Include="..\Services\Newsletters\Newsletters.Api\Protos\newsletters.proto" GrpcServices="Client" Link="Protos\newsletters.proto" />
+    <Protobuf Include="..\Services\GameStats\GameStats.WebApi\Protos\gamestats.proto" GrpcServices="Client" Link="Protos\gamestats.proto" />
   </ItemGroup>
 </Project>

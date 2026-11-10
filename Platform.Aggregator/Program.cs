@@ -20,6 +20,7 @@ builder.Services.AddOptions<DownstreamOptions>()
     .ValidateOnStart();
 builder.Services.AddProblemDetails();
 builder.Services.AddDashboardClients();
+builder.Services.AddGrpcDashboardClients();
 builder.Services.AddScoped<PlayerDashboardService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options => options.SwaggerDoc("v1", new OpenApiInfo
