@@ -39,7 +39,7 @@ public static class TelemetryExtensions
                 .AddRuntimeInstrumentation())
             .WithTracing(tracing => tracing
                 .SetSampler(sampler)
-                .AddSource(CacheMetrics.MeterName)
+                .AddSource(CacheMetrics.MeterName, "Platform.Grpc")
                 .AddSource(builder.Environment.ApplicationName, serviceName,
                     "Platform.*", "Npgsql", "MongoDB.Driver.Core.Extensions.DiagnosticSources")
                 .AddAspNetCoreInstrumentation(options => options.Filter = context =>
