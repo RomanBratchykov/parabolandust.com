@@ -1,13 +1,18 @@
-using Microsoft.Extensions.Options;
+using Accounts.Grpc;
 
 namespace Platform.Aggregator.Clients;
 
 public sealed class AccountsClient(
-    HttpClient http, IOptions<DownstreamOptions> options, ILogger<AccountsClient> logger)
+    AccountsReader.AccountsReaderClient client, GrpcCall calls)
 {
-    public Task<AccountResponse?> GetUserAsync(long userId, CancellationToken cancellationToken) =>
-        DownstreamJson.GetAsync<AccountResponse>(http, options.Value, logger,
-            "accounts-api", $"/api/users/{userId}", cancellationToken);
+    public async Task<AccountResponse?> GetUserAsync(long userId, CancellationToken cancellationToken)
+    {
+        var reply = await calls.InvokeAsync("accounts-api", "accounts.v1.AccountsReader/GetUser",
+            (deadline, token) => client.GetUserAsync(new UserRequest { UserId = userId },
+                deadline: deadline, cancellationToken: token), cancellationToken);
+        return reply is null ? null : new AccountResponse(reply.UserId, reply.UserName,
+            reply.HasPhotoUrl ? reply.PhotoUrl : null);
+    }
 }
 
 public sealed record AccountResponse(long UserId, string UserName, string? UserPhotoUrl = null);
