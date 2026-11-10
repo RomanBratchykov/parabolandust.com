@@ -421,3 +421,68 @@ and source fallback remain functional; restart Redis and repeat. A new service
 process with empty L1 should obtain an L2 hit. Persistent Redis data survives a
 resource restart. Never flush shared Redis or reset business database volumes
 for a check.
+
+## Lab 6 gRPC startup and verification
+
+Use `dotnet dev-certs https --check --trust` to check the existing local
+development certificate; if needed, create/trust it with
+`dotnet dev-certs https --trust`. Start `Platform.AppHost` as above.
+Each business API has a separate named `https` endpoint with HTTP/2 support;
+HTTP health probes and the public Gateway port 5000 remain available.
+Aggregator resolves these logical HTTPS names through service discovery:
+
+| Backend | RPC |
+| --- | --- |
+| `https://accounts-api` | `accounts.v1.AccountsReader/GetUser` |
+| `https://newsletters-api` | `newsletters.v1.NewslettersReader/GetUserSubscriptions` |
+| `https://gamestats-api` | `gamestats.v1.GameStatsReader/GetStatistics` |
+
+Standalone Aggregator also needs `ConnectionStrings__redis` and HTTPS discovery
+settings for all three backends, for example:
+
+```powershell
+Set-Item 'Env:services__accounts-api__https__0' 'https://localhost:<accounts-https-port>'
+Set-Item 'Env:services__newsletters-api__https__0' 'https://localhost:<newsletters-https-port>'
+Set-Item 'Env:services__gamestats-api__https__0' 'https://localhost:<gamestats-https-port>'
+```
+
+Contracts use stable field numbers, int64 identities/play time, nullable photo
+presence, and UTC protobuf timestamps. API adapters call the same business readers
+as REST. Invalid IDs map to `InvalidArgument`, missing records to `NotFound`,
+caller cancellation to `Cancelled`, and unexpected failures to sanitized
+`Internal`. Aggregator preserves its HTTP 400/404/503/504 and partial-200 contract.
+
+`Platform.Cache` exports hit/miss counters tagged by domain and L1/L2, operation
+duration, invalidations, evictions, local entries, and serialized bytes.
+`Platform.Grpc` and `Platform.Grpc.Client` activities include RPC attributes;
+structured server logs include method, peer, status, duration, and exceptions.
+`Transport=http|grpc`, correlation IDs, and trace IDs distinguish shared-cache
+calls without logging payloads or credentials.
+
+Verification on isolated PostgreSQL/MongoDB/Redis stores included 29 HTTPS REST
+requests, nine real HTTP/2 gRPC calls across the production APIs, mutation
+invalidation and stale-version conflicts, L2 reuse after process restart, and
+Redis outage/recovery with working liveness and cold Mongo reads. Temporary
+checks additionally covered concurrent cache budgets, stale-fill races,
+complete-only dashboard caching, deadlines, cancellation, malformed timestamps,
+identity rejection, correlation isolation, and parallel optional calls. A
+temporary incompatible protobuf decoder demonstrated that changing the username
+field number loses that field; production field numbers remain unchanged.
+
+An equivalent account-first, then two-parallel-call comparison used the same
+warm service caches and fixture, without aggregate caching, after five warmups:
+
+| Transport | Requests / errors | Median | p95 |
+| --- | --- | --- | --- |
+| REST HTTP/1.1 over TLS | 100 / 0 | 11.04 ms | 13.05 ms |
+| gRPC HTTP/2 over TLS | 100 / 0 | 13.42 ms | 16.73 ms |
+
+gRPC was slower in this local run; no protocol speedup is claimed. Final build
+and test logs, comparison data, and temporary fixtures stay outside Git.
+
+Submission evidence still to capture in the actual Aspire Dashboard: a cold
+Gateway-to-databases trace with all three RPCs, a repeated read without SQL,
+and nonzero L1/L2 cache metrics. Save the three required screenshots locally.
+Actual AppHost orchestration/export screenshots and the complete live aggregate
+outage matrix were not captured in this verification; model checks and loopback
+tests do not replace that evidence.
