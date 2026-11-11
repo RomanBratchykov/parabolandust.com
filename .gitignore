@@ -1,8 +1,20 @@
-.vscode
-/uikit
-/tasks
-/tests
-/bin
-/obj
-/.vs
+# Local tools and workspace files
+.vscode/
+/uikit/
+/tasks/
+/tests/
+
+# .NET build output and IDE state
+bin/
+obj/
+.vs/
 *.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test and coverage output
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
