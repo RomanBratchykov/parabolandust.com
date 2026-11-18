@@ -4,6 +4,7 @@
   <Project Path="Platform.AppHost/Platform.AppHost.csproj" />
   <Project Path="Platform.ApiGateway/Platform.ApiGateway.csproj" />
   <Project Path="Platform.Aggregator/Platform.Aggregator.csproj" />
+  <Project Path="Platform.Aggregator.Tests/Platform.Aggregator.Tests.csproj" />
   <Folder Name="/Services/" />
   <Folder Name="/Services/GameStats/">
     <Project Path="Services/GameStats/GameStats.Domain/GameStats.Domain.csproj" />
