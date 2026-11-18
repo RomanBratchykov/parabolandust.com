@@ -1,12 +1,13 @@
 using Accounts.Bll;
 using Accounts.Bll.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Platform.ServiceDefaults;
 
 namespace Accounts.Api.Controllers;
 
 [ApiController]
 [Route("api/donations")]
-public sealed class DonationsController(IAccountsService accountsService) : ControllerBase
+public sealed class DonationsController(IAccountsService accountsService, BusinessMetrics metrics) : ControllerBase
 {
     [HttpGet("{donationId:long}")]
     [ProducesResponseType<DonationResponse>(StatusCodes.Status200OK)]
@@ -26,7 +27,9 @@ public sealed class DonationsController(IAccountsService accountsService) : Cont
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create(CreateDonationRequest request, CancellationToken cancellationToken)
     {
+        using var operation = metrics.Start("donation.create");
         var donationId = await accountsService.CreateDonationAsync(request, cancellationToken);
+        operation.Succeed();
         return CreatedAtAction(nameof(Get), new { donationId }, new { donationId });
     }
 
@@ -55,7 +58,9 @@ public sealed class DonationsController(IAccountsService accountsService) : Cont
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ChangeStatus(long donationId, ChangeDonationStatusRequest request, CancellationToken cancellationToken)
     {
+        using var operation = metrics.Start("donation.status.change");
         await accountsService.ChangeDonationStatusAsync(donationId, request, cancellationToken);
+        operation.Succeed();
         return NoContent();
     }
 }

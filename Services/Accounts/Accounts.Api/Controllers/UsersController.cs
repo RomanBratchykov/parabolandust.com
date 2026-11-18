@@ -1,12 +1,13 @@
 using Accounts.Bll;
 using Accounts.Bll.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Platform.ServiceDefaults;
 
 namespace Accounts.Api.Controllers;
 
 [ApiController]
 [Route("api/users")]
-public sealed class UsersController(IAccountsService accountsService) : ControllerBase
+public sealed class UsersController(IAccountsService accountsService, BusinessMetrics metrics) : ControllerBase
 {
     [HttpGet("{userId:long}")]
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
@@ -25,7 +26,9 @@ public sealed class UsersController(IAccountsService accountsService) : Controll
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create(CreateUserRequest request, CancellationToken cancellationToken)
     {
+        using var operation = metrics.Start("account.create");
         var userId = await accountsService.CreateUserAsync(request, cancellationToken);
+        operation.Succeed();
         return CreatedAtAction(nameof(Get), new { userId }, new { userId });
     }
 
