@@ -2,12 +2,13 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Newsletters.Bll.Contracts;
 using Newsletters.Bll.Services;
+using Platform.ServiceDefaults;
 
 namespace Newsletters.Api.Controllers;
 
 [ApiController]
 [Route("api/subscriptions")]
-public sealed class SubscriptionsController(ISubscriptionService service) : ControllerBase
+public sealed class SubscriptionsController(ISubscriptionService service, BusinessMetrics metrics) : ControllerBase
 {
     [HttpGet("{id:long}")]
     [ProducesResponseType(typeof(SubscriptionDto), StatusCodes.Status200OK)]
@@ -25,11 +26,13 @@ public sealed class SubscriptionsController(ISubscriptionService service) : Cont
         [FromServices] IValidator<CreateSubscriptionRequest> validator,
         CancellationToken cancellationToken)
     {
+        using var operation = metrics.Start("subscription.create");
         var validation = await validator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
             return BadRequest(new ValidationProblemDetails(validation.ToErrorDictionary()));
 
         var created = await service.CreateAsync(request, cancellationToken);
+        operation.Succeed();
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 }

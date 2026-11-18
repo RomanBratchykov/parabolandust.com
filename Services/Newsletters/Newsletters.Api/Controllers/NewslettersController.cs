@@ -2,12 +2,13 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Newsletters.Bll.Contracts;
 using Newsletters.Bll.Services;
+using Platform.ServiceDefaults;
 
 namespace Newsletters.Api.Controllers;
 
 [ApiController]
 [Route("api/newsletters")]
-public sealed class NewslettersController(INewsletterService service) : ControllerBase
+public sealed class NewslettersController(INewsletterService service, BusinessMetrics metrics) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<NewsletterDto>), StatusCodes.Status200OK)]
@@ -45,11 +46,13 @@ public sealed class NewslettersController(INewsletterService service) : Controll
         [FromServices] IValidator<CreateNewsletterRequest> validator,
         CancellationToken cancellationToken)
     {
+        using var operation = metrics.Start("newsletter.create");
         var validation = await validator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
             return BadRequest(new ValidationProblemDetails(validation.ToErrorDictionary()));
 
         var created = await service.CreateAsync(request, cancellationToken);
+        operation.Succeed();
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -64,11 +67,13 @@ public sealed class NewslettersController(INewsletterService service) : Controll
         [FromServices] IValidator<PublishNewsletterRequest> validator,
         CancellationToken cancellationToken)
     {
+        using var operation = metrics.Start("newsletter.publish");
         var validation = await validator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
             return BadRequest(new ValidationProblemDetails(validation.ToErrorDictionary()));
 
         await service.PublishAsync(id, request, cancellationToken);
+        operation.Succeed();
         return NoContent();
     }
 
