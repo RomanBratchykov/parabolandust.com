@@ -1,7 +1,10 @@
 using Accounts.Grpc;
 using GameStats.Grpc;
 using Grpc.Core;
+using Grpc.Health.V1;
+using Grpc.Net.ClientFactory;
 using Grpc.Net.Client.Configuration;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Http.Resilience;
 using Newsletters.Grpc;
 
@@ -23,6 +26,14 @@ public static class GrpcClientRegistration
         string grpcService, string method, int maxAttempts) where TClient : class
     {
 #pragma warning disable EXTEXP0001 // Replace shared defaults rather than stacking resilience handlers.
+        services.AddGrpcClient<Health.HealthClient>(service, options => options.Address = new Uri($"https://{service}"))
+            .ConfigureHttpClient(http => http.Timeout = Timeout.InfiniteTimeSpan)
+            .RemoveAllResilienceHandlers();
+        services.AddHealthChecks().Add(new HealthCheckRegistration(service, provider =>
+            new GrpcDependencyHealthCheck(provider.GetRequiredService<GrpcClientFactory>()
+                .CreateClient<Health.HealthClient>(service), service,
+                provider.GetRequiredService<ILogger<GrpcDependencyHealthCheck>>()),
+            HealthStatus.Unhealthy, ["grpc", "downstream", "ready"], TimeSpan.FromSeconds(3)));
         services.AddGrpcClient<TClient>(options => options.Address = new Uri($"https://{service}"))
             .ConfigureHttpClient(http => http.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigureChannel(channel => channel.ServiceConfig = new ServiceConfig
