@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -26,6 +27,25 @@ public static class HealthCheckExtensions
         app.MapHealthChecks("/alive", new HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("live")
+        });
+        app.MapHealthChecks("/health/live", new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("live")
+        });
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready"),
+            ResponseWriter = (context, report) => context.Response.WriteAsJsonAsync(new
+            {
+                status = report.Status.ToString(),
+                durationMs = report.TotalDuration.TotalMilliseconds,
+                checks = report.Entries.ToDictionary(entry => entry.Key, entry => new
+                {
+                    status = entry.Value.Status.ToString(),
+                    description = entry.Value.Description,
+                    durationMs = entry.Value.Duration.TotalMilliseconds
+                })
+            }, cancellationToken: context.RequestAborted)
         });
         app.MapCacheHealthEndpoints();
 
