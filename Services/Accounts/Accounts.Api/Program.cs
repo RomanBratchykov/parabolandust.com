@@ -28,6 +28,7 @@ builder.Services.AddHealthChecks().AddNpgSql(connectionString, healthQuery: "SEL
     name: "accounts-db", tags: ["database", "postgresql", "ready"], timeout: TimeSpan.FromSeconds(5));
 builder.Services.AddAccountsCaching();
 builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcLoggingInterceptor>());
+builder.Services.AddGrpcHealthChecks();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
@@ -49,6 +50,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapGrpcService<AccountsGrpcService>();
+app.MapGrpcHealthChecksService();
 app.MapDefaultEndpoints();
 
 app.Run();

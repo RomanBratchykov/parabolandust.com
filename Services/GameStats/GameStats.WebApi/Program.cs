@@ -17,6 +17,7 @@ builder.AddServiceDefaults();
 builder.WebHost.ConfigureKestrel(options =>
     options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
 builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcLoggingInterceptor>());
+builder.Services.AddGrpcHealthChecks();
 
 var connectionString = builder.Configuration.GetConnectionString("GameStatsDb");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -68,4 +69,5 @@ app.MapGet("/api/stats/users/{userId:long}", async Task<IResult> (
 
 app.MapDefaultEndpoints();
 app.MapGrpcService<GameStatsGrpcService>();
+app.MapGrpcHealthChecksService();
 app.Run();
