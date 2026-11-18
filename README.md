@@ -512,3 +512,62 @@ HTTP circuit. The small throughput thresholds make transport circuit transitions
 observable on a lab workload. Accounts opens more readily and waits longer
 before probing recovery. Automated protocol tests cover transient and permanent
 gRPC statuses, RPC deadline selection, and transport fail-fast behavior.
+
+### Business metrics and health monitoring
+
+Each API and Aggregator registers singleton business instruments through
+`IMeterFactory`. The counter `<prefix>.operations.completed` increases only
+after a successful business operation. `<prefix>.operation.duration` records
+milliseconds for both successful and failed attempts, including cancellation.
+`<prefix>.operations.active` is a process-local observable gauge of work in
+progress; it should be zero when idle and never negative.
+
+| Meter | Prefix | Fixed operation tags |
+| --- | --- | --- |
+| `Accounts.Api` | `accounts` | `account.create`, `donation.create`, `donation.status.change`, `account.read` |
+| `Newsletters.Api` | `newsletters` | `newsletter.create`, `newsletter.publish`, `subscription.create`, `subscriptions.read` |
+| `GameStats.WebApi` | `gamestats` | `statistics.read` |
+| `Platform.Aggregator` | `dashboard` | `dashboard.read` |
+
+Counters and histograms use only `operation` and `status` (`success` or
+`failure`). They do not tag user IDs, request IDs, timestamps, or payloads.
+Read instruments count executed API operations, including service-cache hits;
+aggregate-cache hits bypass dashboard composition and its instruments. A
+successfully composed partial dashboard counts as a completed dashboard.
+
+All environments expose `/health/live` (process only) and `/health/ready`
+(checks tagged `ready`, with JSON status, descriptions, and durations).
+The existing `/alive`, `/health`, and `/health/cache` routes remain available.
+Accounts and Newsletters probe PostgreSQL using `SELECT 1`, with named
+five-second checks. GameStats uses the existing five-second MongoDB ping.
+Redis failure reports `Degraded`, permits HTTP 200 readiness, and leaves cache
+source fallback available. A degraded body must be inspected explicitly:
+AppHost HTTP checks use the HTTP status, so HTTP 200 alone does not distinguish
+`Healthy` from `Degraded`.
+
+The three APIs expose the standard gRPC health protocol. Aggregator probes
+each separately with a two-second deadline and no resilience retries; a
+not-serving response or failed call makes that dependency `Unhealthy`.
+AppHost checks `/health/ready` and no longer waits for Redis before starting
+the APIs. Required database startup dependencies remain in place.
+
+In Aspire Metrics, filter by the business meter and `operation`, then compare
+completed-operation rates and duration histograms by `status`. During normal
+healthy traffic, investigate failed operations, nonzero idle gauges, and
+unexpected growth in durations. Establish database-operation latency baselines
+from real traffic rather than assuming an unmeasured SLA. For downstream calls,
+compare delays against the configured RPC budgets in the table above.
+Filter Polly's `resilience.polly.strategy.events` by `event.name` and pipeline
+to investigate retries, timeouts, and circuit transitions. Native gRPC retries
+are separate from Polly HTTP retries; their retry metadata is
+`grpc-previous-rpc-attempts`. Use Structured logs with `ServiceName` and
+`CorrelationId`, and trace IDs to follow Gateway → Aggregator → APIs → stores.
+
+Verification: the full solution builds, 55 tests pass, and 14 existing
+infrastructure-dependent tests are skipped. Tests include Production health
+routes, Redis degradation/source fallback/recovery, gRPC health failures and
+deadlines, metric outcomes/gauges, publication failures, and dashboard timeouts.
+Live Aspire/OTLP verification and required screenshots remain outstanding:
+Debian WSL cannot attach its missing `ext4.vhdx`, and no native Docker CLI is
+available in this environment. Capture the retry/circuit metric, a business
+metric, degraded readiness JSON, and resource states once infrastructure runs.
