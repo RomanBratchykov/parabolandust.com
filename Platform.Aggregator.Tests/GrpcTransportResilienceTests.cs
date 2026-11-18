@@ -4,6 +4,8 @@ using Accounts.Grpc;
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
 using Platform.Aggregator.Clients;
 using Platform.ServiceDefaults;
 using Xunit;
@@ -17,11 +19,15 @@ public sealed class GrpcTransportResilienceTests
     {
         var builder = Host.CreateApplicationBuilder();
         builder.AddServiceDefaults();
+        var exporter = new PollyEventExporter();
+        builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics
+            .AddReader(new PeriodicExportingMetricReader(exporter, exportIntervalMilliseconds: 60000)));
         builder.Services.AddGrpcDashboardClients();
         var transport = new UnavailableTransport();
         builder.Services.AddGrpcClient<AccountsReader.AccountsReaderClient>()
             .ConfigurePrimaryHttpMessageHandler(() => transport);
         using var host = builder.Build();
+        var metrics = host.Services.GetRequiredService<MeterProvider>();
         var client = host.Services.GetRequiredService<AccountsReader.AccountsReaderClient>();
 
         await Assert.ThrowsAsync<RpcException>(async () =>
@@ -31,6 +37,24 @@ public sealed class GrpcTransportResilienceTests
         await Assert.ThrowsAsync<RpcException>(async () =>
             await client.GetUserAsync(new UserRequest { UserId = 1 }, deadline: DateTime.UtcNow.AddSeconds(5)));
         Assert.Equal(4, transport.Attempts);
+        Assert.True(metrics.ForceFlush());
+        Assert.Contains("OnCircuitOpened", exporter.Events);
+    }
+
+    private sealed class PollyEventExporter : BaseExporter<Metric>
+    {
+        public List<string> Events { get; } = [];
+
+        public override ExportResult Export(in Batch<Metric> batch)
+        {
+            foreach (var metric in batch)
+                if (metric.MeterName == "Polly" && metric.Name == "resilience.polly.strategy.events")
+                    foreach (var point in metric.GetMetricPoints())
+                        foreach (var tag in point.Tags)
+                            if (tag.Key == "event.name" && tag.Value is string name)
+                                Events.Add(name);
+            return ExportResult.Success;
+        }
     }
 
     private sealed class UnavailableTransport : HttpMessageHandler

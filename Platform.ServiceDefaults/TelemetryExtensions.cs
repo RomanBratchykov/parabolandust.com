@@ -33,7 +33,7 @@ public static class TelemetryExtensions
                     ["deployment.environment.name"] = builder.Environment.EnvironmentName
                 }))
             .WithMetrics(metrics => metrics
-                .AddMeter(CacheMetrics.MeterName)
+                .AddMeter(CacheMetrics.MeterName, "Polly")
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation())
