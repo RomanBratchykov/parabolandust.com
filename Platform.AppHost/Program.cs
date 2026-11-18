@@ -20,21 +20,27 @@ var mongo = builder.AddMongoDB("platform-mongo", password: mongoPassword)
 var gameStatsDb = mongo.AddDatabase("GameStatsDb", "game_stats_db");
 var redis = builder.AddRedis("redis")
     .WithDataVolume("parabolandust-platform-redis-data");
+var messaging = builder.AddRabbitMQ("messaging")
+    .WithDataVolume("parabolandust-platform-rabbitmq-data")
+    .WithManagementPlugin();
 
 var accounts = builder.AddProject<Projects.Accounts_Api>("accounts-api", launchProfileName: "http")
     .WithHttpsEndpoint(name: "https")
     .WithReference(accountsDb).WaitFor(accountsDb)
+    .WithReference(messaging).WaitFor(messaging)
     .WithReference(redis)
     .WithHttpHealthCheck("/health/ready", endpointName: "http");
 var newsletters = builder.AddProject<Projects.Newsletters_Api>("newsletters-api", launchProfileName: "http")
     .WithHttpsEndpoint(name: "https")
     .WithReference(newslettersDb).WaitFor(newslettersDb)
+    .WithReference(messaging).WaitFor(messaging)
     .WithReference(redis)
     .WithHttpHealthCheck("/health/ready", endpointName: "http");
 var gameStats = builder.AddProject<Projects.GameStats_WebApi>("gamestats-api")
     .WithHttpEndpoint(name: "http")
     .WithHttpsEndpoint(name: "https")
     .WithReference(gameStatsDb).WaitFor(gameStatsDb)
+    .WithReference(messaging).WaitFor(messaging)
     .WithReference(redis)
     .WithHttpHealthCheck("/health/ready", endpointName: "http");
 
