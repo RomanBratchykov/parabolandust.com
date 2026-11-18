@@ -12,6 +12,10 @@ public static class Extensions
         builder.AddDefaultLogging();
         builder.AddDefaultTelemetry();
         builder.AddDefaultHealthChecks();
+        var service = builder.Environment.ApplicationName;
+        var prefix = service == "Platform.Aggregator" ? "dashboard" : service.Split('.')[0].ToLowerInvariant();
+        builder.Services.AddSingleton(provider => new BusinessMetrics(
+            provider.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>(), service, prefix));
         builder.Services.AddServiceDiscovery();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddTransient<CorrelationIdHandler>();

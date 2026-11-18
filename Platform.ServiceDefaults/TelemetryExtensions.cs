@@ -34,6 +34,7 @@ public static class TelemetryExtensions
                 }))
             .WithMetrics(metrics => metrics
                 .AddMeter(CacheMetrics.MeterName, "Polly")
+                .AddMeter("Accounts.Api", "Newsletters.Api", "GameStats.WebApi", "Platform.Aggregator")
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation())
