@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Grpc.Core;
 using Microsoft.Extensions.Options;
+using Polly.Timeout;
 
 namespace Platform.Aggregator.Clients;
 
@@ -41,6 +42,8 @@ public sealed class GrpcCall(IOptions<DownstreamOptions> options, ILogger<GrpcCa
         {
             status = exception.StatusCode;
             cancellationToken.ThrowIfCancellationRequested();
+            if (exception.Status.DebugException is TimeoutRejectedException)
+                status = StatusCode.DeadlineExceeded;
             if (status == StatusCode.NotFound)
                 return null;
             if (status == StatusCode.DeadlineExceeded)
