@@ -1,4 +1,5 @@
 using Accounts.Grpc;
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Platform.Aggregator.Clients;
@@ -13,6 +14,17 @@ public sealed class GrpcTimeoutTests
     [Fact]
     public async Task Transport_attempt_timeout_preserves_dashboard_timeout_classification()
     {
+        var outcomes = new List<string>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, source) =>
+        {
+            if (instrument.Meter.Name == "Platform.Aggregator") source.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<double>((instrument, _, tags, _) =>
+        {
+            if (instrument.Name == "dashboard.operation.duration") outcomes.Add((string)tags[1].Value!);
+        });
+        listener.Start();
         using var host = CreateHost();
         var dashboard = host.Services.GetRequiredService<PlayerDashboardService>();
 
@@ -20,6 +32,7 @@ public sealed class GrpcTimeoutTests
             dashboard.GetDashboardAsync(1, CancellationToken.None));
 
         Assert.True(exception.TimedOut);
+        Assert.Equal(new[] { "failure" }, outcomes);
     }
 
     [Fact]
@@ -35,7 +48,7 @@ public sealed class GrpcTimeoutTests
 
     private static IHost CreateHost()
     {
-        var builder = Host.CreateApplicationBuilder();
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { ApplicationName = "Platform.Aggregator" });
         builder.AddServiceDefaults();
         builder.Services.AddGrpcDashboardClients();
         builder.Services.AddDashboardClients();

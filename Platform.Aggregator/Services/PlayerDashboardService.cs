@@ -1,18 +1,20 @@
 using System.Diagnostics;
 using Platform.Aggregator.Clients;
 using Platform.Aggregator.Contracts;
+using Platform.ServiceDefaults;
 
 namespace Platform.Aggregator.Services;
 
 public sealed class PlayerDashboardService(
     AccountsClient accounts, NewslettersClient newsletters, GameStatsClient statistics,
-    ILogger<PlayerDashboardService> logger)
+    ILogger<PlayerDashboardService> logger, BusinessMetrics metrics)
 {
     private static readonly ActivitySource Activities = new("Platform.Aggregator");
 
     public async Task<PlayerDashboardDto?> GetDashboardAsync(long userId, CancellationToken cancellationToken)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(userId);
+        using var operation = metrics.Start("dashboard.read");
         using var activity = Activities.StartActivity("GetPlayerDashboard");
         activity?.SetTag("user.id", userId);
 
@@ -51,12 +53,14 @@ public sealed class PlayerDashboardService(
             userId, warnings.Length);
         activity?.SetTag("dashboard.warning_count", warnings.Length);
 
-        return new PlayerDashboardDto(
+        var dashboard = new PlayerDashboardDto(
             new DashboardPlayerDto(player.UserId, player.UserName, player.UserPhotoUrl),
             subscriptions.Value?.Subscriptions.Select(item => new DashboardSubscriptionDto(
                 item.Id, item.NewsletterId, item.NewsletterTitle, item.Status, item.ConsentAt)).ToArray(),
             stats.Value is { } value ? new DashboardStatisticsDto(value.Totals.TimesKilled,
                 value.Totals.TimesWon, value.Totals.TimePlayed, value.UpdatedAt) : null,
             warnings);
+        operation.Succeed();
+        return dashboard;
     }
 }

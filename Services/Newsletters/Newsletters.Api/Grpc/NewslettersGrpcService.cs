@@ -3,13 +3,15 @@ using Grpc.Core;
 using Newsletters.Bll.Services;
 using Newsletters.Domain.Exceptions;
 using Newsletters.Grpc;
+using Platform.ServiceDefaults;
 
 namespace Newsletters.Api.Grpc;
 
-public sealed class NewslettersGrpcService(INewsletterService newsletters) : NewslettersReader.NewslettersReaderBase
+public sealed class NewslettersGrpcService(INewsletterService newsletters, BusinessMetrics metrics) : NewslettersReader.NewslettersReaderBase
 {
     public override async Task<UserSubscriptionsReply> GetUserSubscriptions(UserRequest request, ServerCallContext context)
     {
+        using var operation = metrics.Start("subscriptions.read");
         if (request.UserId <= 0)
             throw new RpcException(new Status(StatusCode.InvalidArgument, "User ID must be positive."));
         try
@@ -24,6 +26,7 @@ public sealed class NewslettersGrpcService(INewsletterService newsletters) : New
                 Status = subscription.Status,
                 ConsentAt = Timestamp.FromDateTimeOffset(subscription.ConsentAt)
             }));
+            operation.Succeed();
             return reply;
         }
         catch (EntityNotFoundException)
