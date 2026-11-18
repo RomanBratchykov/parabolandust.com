@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
 
 namespace Platform.ServiceDefaults;
 
@@ -16,7 +17,8 @@ public static class Extensions
         builder.Services.AddTransient<CorrelationIdHandler>();
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            http.AddStandardResilienceHandler();
+            http.AddStandardResilienceHandler(options =>
+                options.Retry.DisableForUnsafeHttpMethods());
             http.AddServiceDiscovery();
             http.AddHttpMessageHandler<CorrelationIdHandler>();
         });
