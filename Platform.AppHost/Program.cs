@@ -24,31 +24,31 @@ var redis = builder.AddRedis("redis")
 var accounts = builder.AddProject<Projects.Accounts_Api>("accounts-api", launchProfileName: "http")
     .WithHttpsEndpoint(name: "https")
     .WithReference(accountsDb).WaitFor(accountsDb)
-    .WithReference(redis).WaitFor(redis)
-    .WithHttpHealthCheck("/health", endpointName: "http");
+    .WithReference(redis)
+    .WithHttpHealthCheck("/health/ready", endpointName: "http");
 var newsletters = builder.AddProject<Projects.Newsletters_Api>("newsletters-api", launchProfileName: "http")
     .WithHttpsEndpoint(name: "https")
     .WithReference(newslettersDb).WaitFor(newslettersDb)
-    .WithReference(redis).WaitFor(redis)
-    .WithHttpHealthCheck("/health", endpointName: "http");
+    .WithReference(redis)
+    .WithHttpHealthCheck("/health/ready", endpointName: "http");
 var gameStats = builder.AddProject<Projects.GameStats_WebApi>("gamestats-api")
     .WithHttpEndpoint(name: "http")
     .WithHttpsEndpoint(name: "https")
     .WithReference(gameStatsDb).WaitFor(gameStatsDb)
-    .WithReference(redis).WaitFor(redis)
-    .WithHttpHealthCheck("/health", endpointName: "http");
+    .WithReference(redis)
+    .WithHttpHealthCheck("/health/ready", endpointName: "http");
 
 var aggregator = builder.AddProject<Projects.Platform_Aggregator>("aggregator")
     .WithHttpEndpoint(name: "http")
     .WithReference(accounts).WithReference(newsletters).WithReference(gameStats)
-    .WithReference(redis).WaitFor(redis)
+    .WithReference(redis)
     .WaitFor(accounts).WaitFor(newsletters).WaitFor(gameStats)
-    .WithHttpHealthCheck("/health", endpointName: "http");
+    .WithHttpHealthCheck("/health/ready", endpointName: "http");
 
 builder.AddProject<Projects.Platform_ApiGateway>("gateway")
     .WithHttpEndpoint(port: 5000, name: "http")
     .WithReference(accounts).WithReference(newsletters).WithReference(gameStats).WithReference(aggregator)
     .WaitFor(accounts).WaitFor(newsletters).WaitFor(gameStats).WaitFor(aggregator)
-    .WithHttpHealthCheck("/health", endpointName: "http");
+    .WithHttpHealthCheck("/health/ready", endpointName: "http");
 
 builder.Build().Run();
