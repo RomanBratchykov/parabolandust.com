@@ -23,7 +23,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("Connection string 'GameStatsDb' is required.");
 
 builder.Services.AddGameStatsInfrastructure(connectionString);
-builder.AddRedisDistributedCache("redis");
+builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks = true);
 builder.Services.AddPlatformCaching();
 builder.Services.AddScoped<IPlayerStatisticsService, PlayerStatisticsService>();
 builder.Services.AddOpenTelemetry().WithTracing(tracing => tracing.AddSource(MongoTelemetry.ActivitySourceName));

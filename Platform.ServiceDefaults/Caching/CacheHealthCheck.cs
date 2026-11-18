@@ -34,7 +34,7 @@ public sealed class CacheHealthCheck(IServiceProvider services) : IHealthCheck
         catch (Exception exception) when (exception is RedisException or TimeoutException ||
             exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
         {
-            return HealthCheckResult.Unhealthy("Redis is unavailable; reads can fall back to the source.",
+            return HealthCheckResult.Degraded("Redis is unavailable; reads can fall back to the source.",
                 exception, data);
         }
     }

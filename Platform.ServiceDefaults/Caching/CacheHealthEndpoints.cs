@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Platform.Caching;
 
 namespace Platform.ServiceDefaults.Caching;
@@ -13,7 +14,8 @@ public static class CacheHealthEndpoints
     {
         if (services.Any(service => service.ServiceType == typeof(CacheHealthCheck))) return services;
         services.TryAddSingleton<CacheHealthCheck>();
-        services.AddHealthChecks().AddCheck<CacheHealthCheck>(CacheHealthCheck.Name, tags: ["cache"]);
+        services.AddHealthChecks().AddCheck<CacheHealthCheck>(CacheHealthCheck.Name,
+            failureStatus: HealthStatus.Degraded, tags: ["cache", "redis", "ready"], timeout: TimeSpan.FromSeconds(3));
         return services;
     }
 

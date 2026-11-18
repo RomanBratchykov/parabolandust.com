@@ -12,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options =>
     options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
 builder.AddServiceDefaults();
-builder.AddRedisDistributedCache("redis");
+builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks = true);
 builder.Services.AddPlatformCaching();
 builder.Services.AddCacheHealthChecks();
 
