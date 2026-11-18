@@ -24,6 +24,8 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddAccountsBll(connectionString);
+builder.Services.AddHealthChecks().AddNpgSql(connectionString, healthQuery: "SELECT 1",
+    name: "accounts-db", tags: ["database", "postgresql", "ready"], timeout: TimeSpan.FromSeconds(5));
 builder.Services.AddAccountsCaching();
 builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcLoggingInterceptor>());
 builder.Services.AddControllers();

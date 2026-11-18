@@ -27,7 +27,8 @@ builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks
 builder.Services.AddPlatformCaching();
 builder.Services.AddScoped<IPlayerStatisticsService, PlayerStatisticsService>();
 builder.Services.AddOpenTelemetry().WithTracing(tracing => tracing.AddSource(MongoTelemetry.ActivitySourceName));
-builder.Services.AddHealthChecks().AddCheck<MongoReadinessCheck>("mongodb", timeout: TimeSpan.FromSeconds(5));
+builder.Services.AddHealthChecks().AddCheck<MongoReadinessCheck>("gamestats-db",
+    tags: ["database", "mongodb", "ready"], timeout: TimeSpan.FromSeconds(5));
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

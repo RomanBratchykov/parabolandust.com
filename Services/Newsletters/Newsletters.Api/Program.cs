@@ -19,6 +19,9 @@ builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks
 builder.Services.AddPlatformCaching();
 
 builder.Services.AddNewslettersBll(builder.Configuration);
+builder.Services.AddHealthChecks().AddNpgSql(builder.Configuration.GetConnectionString("NewslettersDb")!,
+    healthQuery: "SELECT 1", name: "newsletters-db", tags: ["database", "postgresql", "ready"],
+    timeout: TimeSpan.FromSeconds(5));
 builder.Services.AddNewslettersCaching();
 builder.WebHost.ConfigureKestrel(options => options.ConfigureEndpointDefaults(endpoint =>
     endpoint.Protocols = HttpProtocols.Http1AndHttp2));
