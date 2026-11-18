@@ -22,7 +22,7 @@ public static class GrpcClientRegistration
     private static void Register<TClient>(IServiceCollection services, string service,
         string grpcService, string method, int maxAttempts) where TClient : class
     {
-#pragma warning disable EXTEXP0001 // RPC deadlines replace the shared HTTP resilience budget.
+#pragma warning disable EXTEXP0001 // Replace shared defaults rather than stacking resilience handlers.
         services.AddGrpcClient<TClient>(options => options.Address = new Uri($"https://{service}"))
             .ConfigureHttpClient(http => http.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigureChannel(channel => channel.ServiceConfig = new ServiceConfig
@@ -43,7 +43,19 @@ public static class GrpcClientRegistration
                     }
                 }
             })
-            .RemoveAllResilienceHandlers();
+            .RemoveAllResilienceHandlers()
+            .AddStandardResilienceHandler(options =>
+            {
+                var required = service == "accounts-api";
+                // gRPC owns retries of read-only POST calls; HTTP retries would multiply attempts.
+                options.Retry.DisableForUnsafeHttpMethods();
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(required ? 2 : 1);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(required ? 5 : 2);
+                options.CircuitBreaker.FailureRatio = required ? 0.3 : 0.7;
+                options.CircuitBreaker.MinimumThroughput = required ? 4 : 6;
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(10);
+                options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(required ? 10 : 5);
+            });
 #pragma warning restore EXTEXP0001
         // Only named read RPCs retry; future write methods do not inherit a retry policy.
     }

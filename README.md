@@ -486,3 +486,29 @@ and nonzero L1/L2 cache metrics. Save the three required screenshots locally.
 Actual AppHost orchestration/export screenshots and the complete live aggregate
 outage matrix were not captured in this verification; model checks and loopback
 tests do not replace that evidence.
+
+## Lab 7: Aggregator resilience
+
+| Client | gRPC attempts | Call deadline | HTTP attempt / total timeout | Circuit failure ratio / minimum requests | Break duration |
+| --- | --- | --- | --- | --- | --- |
+| Accounts | 4 | configured budget (default 5 s) | 2 s / 5 s | 30% / 4 | 10 s |
+| Newsletters | 2 | at most 2 s | 1 s / 2 s | 70% / 6 | 5 s |
+| GameStats | 2 | at most 2 s | 1 s / 2 s | 70% / 6 | 5 s |
+
+Accounts is required to identify the player. Optional projections have fewer
+attempts and shorter deadlines so failures produce partial dashboards promptly.
+The configured `Downstream:TimeoutSeconds` budget also caps optional deadlines.
+All retry attempts share the original RPC deadline. Named read RPCs retry only
+`Unavailable` and `ResourceExhausted`, using exponential backoff from 200 ms,
+capped at 1 s, with gRPC's built-in randomization. Future write methods have no
+gRPC retry policy, and HTTP retries are disabled for unsafe methods, including
+the POST requests used by gRPC, to avoid multiplying attempts.
+
+Each client replaces the shared HTTP resilience handler with one tailored
+standard handler. Transport failures (HTTP 5xx/408/429, network exceptions and
+attempt timeouts) count toward its circuit over a 10 s window. HTTP 200 replies
+with failing gRPC statuses are handled by gRPC retries; they do not open this
+HTTP circuit. The small throughput thresholds make transport circuit transitions
+observable on a lab workload. Accounts opens more readily and waits longer
+before probing recovery. Automated protocol tests cover transient and permanent
+gRPC statuses, RPC deadline selection, and transport fail-fast behavior.
