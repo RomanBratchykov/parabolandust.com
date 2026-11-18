@@ -2,15 +2,17 @@ using GameStats.Application;
 using GameStats.Grpc;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Platform.ServiceDefaults;
 
 namespace GameStats.WebApi.Grpc;
 
 public sealed class GameStatsGrpcService(
-    IPlayerStatisticsService service, ILogger<GameStatsGrpcService> logger)
+    IPlayerStatisticsService service, ILogger<GameStatsGrpcService> logger, BusinessMetrics metrics)
     : GameStatsReader.GameStatsReaderBase
 {
     public override async Task<StatisticsReply> GetStatistics(UserRequest request, ServerCallContext context)
     {
+        using var operation = metrics.Start("statistics.read");
         if (request.UserId <= 0)
             throw new RpcException(new Status(StatusCode.InvalidArgument, "User ID must be positive."));
 
@@ -20,7 +22,7 @@ public sealed class GameStatsGrpcService(
             if (statistics is null)
                 throw new RpcException(new Status(StatusCode.NotFound, "Player statistics not found."));
 
-            return new StatisticsReply
+            var reply = new StatisticsReply
             {
                 UserId = statistics.UserId,
                 UpdatedAt = Timestamp.FromDateTimeOffset(statistics.UpdatedAt),
@@ -31,6 +33,8 @@ public sealed class GameStatsGrpcService(
                     TimePlayed = statistics.Totals.TimePlayed
                 }
             };
+            operation.Succeed();
+            return reply;
         }
         catch (RpcException) { throw; }
         catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)

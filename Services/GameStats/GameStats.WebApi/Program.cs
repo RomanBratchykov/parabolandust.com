@@ -45,9 +45,10 @@ if (app.Environment.IsDevelopment())
 
 using var source = new ActivitySource("Platform.GameStats");
 app.MapGet("/api/stats/users/{userId:long}", async Task<IResult> (
-    long userId, IPlayerStatisticsService service, ILoggerFactory loggerFactory,
+    long userId, IPlayerStatisticsService service, ILoggerFactory loggerFactory, BusinessMetrics metrics,
     CancellationToken cancellationToken) =>
 {
+    using var operation = metrics.Start("statistics.read");
     if (userId <= 0)
         return Results.Problem(statusCode: 400, title: "User ID must be positive.");
 
@@ -59,6 +60,7 @@ app.MapGet("/api/stats/users/{userId:long}", async Task<IResult> (
 
     loggerFactory.CreateLogger("GameStats.Statistics")
         .LogInformation("Retrieved statistics for user {UserId}", userId);
+    operation.Succeed();
     return Results.Ok(statistics);
 })
     .WithName("GetPlayerStatistics")
