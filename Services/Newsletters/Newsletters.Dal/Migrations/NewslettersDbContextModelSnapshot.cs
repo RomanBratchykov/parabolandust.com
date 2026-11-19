@@ -283,6 +283,23 @@ namespace Newsletters.Dal.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Newsletters.Domain.Models.ProcessedEvent", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTimeOffset>("ProcessedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("EventId");
+
+                    b.ToTable("processed_events", "newsletter");
+                });
+
             modelBuilder.Entity("Newsletters.Domain.Models.Subscription", b =>
                 {
                     b.Property<long>("Id")
@@ -510,6 +527,12 @@ namespace Newsletters.Dal.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("source_updated_at");
 
+                    b.Property<long>("SourceVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("source_version");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -535,6 +558,8 @@ namespace Newsletters.Dal.Migrations
                     b.ToTable("users_copy", "newsletter", t =>
                         {
                             t.HasCheckConstraint("ck_users_copy_row_version", "row_version > 0");
+
+                            t.HasCheckConstraint("ck_users_copy_source_version", "source_version >= 0");
                         });
 
                     b.HasData(

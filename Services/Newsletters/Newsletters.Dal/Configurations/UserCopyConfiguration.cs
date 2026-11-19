@@ -9,7 +9,10 @@ public sealed class UserCopyConfiguration : IEntityTypeConfiguration<UserCopy>
     public void Configure(EntityTypeBuilder<UserCopy> builder)
     {
         builder.ToTable("users_copy", "newsletter", table =>
-            table.HasCheckConstraint("ck_users_copy_row_version", "row_version > 0"));
+        {
+            table.HasCheckConstraint("ck_users_copy_row_version", "row_version > 0");
+            table.HasCheckConstraint("ck_users_copy_source_version", "source_version >= 0");
+        });
         builder.HasKey(user => user.Id);
         builder.Property(user => user.Id).HasColumnName("user_id").ValueGeneratedNever();
         builder.Property(user => user.UserName).HasColumnName("user_name").HasMaxLength(50).IsRequired();
@@ -17,6 +20,7 @@ public sealed class UserCopyConfiguration : IEntityTypeConfiguration<UserCopy>
         builder.Property(user => user.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(user => user.CreatedBy).HasColumnName("created_by").HasMaxLength(100).HasDefaultValue("account-events");
         builder.Property(user => user.SourceUpdatedAt).HasColumnName("source_updated_at").HasColumnType("timestamp with time zone").IsRequired();
+        builder.Property(user => user.SourceVersion).HasColumnName("source_version").HasDefaultValue(0L);
         builder.Property(user => user.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(user => user.UpdatedBy).HasColumnName("updated_by").HasMaxLength(100).HasDefaultValue("account-events");
         builder.Property(user => user.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);

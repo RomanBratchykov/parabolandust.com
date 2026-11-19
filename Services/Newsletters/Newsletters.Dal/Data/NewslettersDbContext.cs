@@ -11,6 +11,7 @@ public sealed class NewslettersDbContext(DbContextOptions<NewslettersDbContext> 
     public DbSet<UserCopy> UsersCopy => Set<UserCopy>();
     public DbSet<UserComment> UserComments => Set<UserComment>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<ProcessedEvent> ProcessedEvents => Set<ProcessedEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -10,6 +10,8 @@ public class UserCopy
     public DateTimeOffset CreatedAt { get; private set; }
     public string CreatedBy { get; private set; } = string.Empty;
     public DateTimeOffset SourceUpdatedAt { get; private set; }
+    // Zero marks legacy copies whose source row version was never recorded.
+    public long SourceVersion { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public string UpdatedBy { get; private set; } = string.Empty;
     public bool IsDeleted { get; private set; }
