@@ -128,6 +128,23 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<bool> RotateIdentityAsync(long userId, string identity, long expectedRowVersion,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE accounts.users
+            SET user_whoami = @identity, updated_at = CURRENT_TIMESTAMP,
+                updated_by = CURRENT_USER, row_version = row_version + 1
+            WHERE user_id = @userId AND row_version = @expectedRowVersion AND is_deleted IS FALSE
+            """;
+        await EnsureOpenAsync(cancellationToken);
+        await using var command = new NpgsqlCommand(sql, _connection, _currentTransaction());
+        command.Parameters.AddWithValue("userId", NpgsqlDbType.Bigint, userId);
+        AddTextParameter(command, "identity", identity);
+        command.Parameters.AddWithValue("expectedRowVersion", NpgsqlDbType.Bigint, expectedRowVersion);
+        return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
+    }
+
     private async Task EnsureOpenAsync(CancellationToken cancellationToken)
     {
         if (_connection.State != System.Data.ConnectionState.Open)

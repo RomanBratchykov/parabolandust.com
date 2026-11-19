@@ -51,4 +51,14 @@ public sealed class UsersController(IAccountsService accountsService, BusinessMe
         await accountsService.DeleteUserAsync(userId, expectedRowVersion, cancellationToken);
         return NoContent();
     }
+
+    [HttpPut("{userId:long}/identity")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RotateIdentity(long userId, RotateIdentityRequest request, CancellationToken cancellationToken)
+    {
+        await accountsService.RotateIdentityAsync(userId, request, cancellationToken);
+        return NoContent();
+    }
 }

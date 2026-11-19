@@ -31,6 +31,12 @@ public sealed class UpdateUserRequest
     [Range(1, long.MaxValue)] public long ExpectedRowVersion { get; init; }
 }
 
+public sealed class RotateIdentityRequest
+{
+    [Required, StringLength(128)] public string UserWhoAmI { get; init; } = string.Empty;
+    [Range(1, long.MaxValue)] public long ExpectedRowVersion { get; init; }
+}
+
 public sealed record DonationResponse(
     long DonationId,
     long? UserId,

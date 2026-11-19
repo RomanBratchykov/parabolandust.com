@@ -49,6 +49,7 @@ public sealed class AccountsService : IAccountsService
 
         AccountSnapshot snapshot;
         long userId;
+        UserAchievement? initialUnlock = null;
         await _unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
@@ -68,8 +69,9 @@ public sealed class AccountsService : IAccountsService
             }, cancellationToken);
             if (request.InitialAchievementId is long initialAchievementId)
             {
-                await _unitOfWork.UserAchievements.AddAsync(
-                    new UserAchievement { UserId = userId, AchievementId = initialAchievementId }, cancellationToken);
+                initialUnlock = new UserAchievement { UserId = userId, AchievementId = initialAchievementId };
+                if (!await _unitOfWork.UserAchievements.AddAsync(initialUnlock, cancellationToken))
+                    throw new BusinessConflictException("The user already has this achievement.");
             }
             snapshot = await ReadAccountSnapshotAsync(userId, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
@@ -87,6 +89,9 @@ public sealed class AccountsService : IAccountsService
         activity?.SetTag("user.id", userId);
         _logger.LogInformation("Account created for user {UserId}", userId);
         await PublishAccountEventAsync(new AccountCreatedEvent(snapshot) { OccurredAt = snapshot.SourceUpdatedAt });
+        if (initialUnlock is not null)
+            await PublishAccountEventAsync(new AchievementUnlockedEvent(userId, initialUnlock.AchievementId,
+                initialUnlock.UnlockedAt) { OccurredAt = initialUnlock.UnlockedAt });
         return userId;
     }
 
@@ -146,6 +151,32 @@ public sealed class AccountsService : IAccountsService
             throw;
         }
         await PublishAccountEventAsync(new AccountDeletedEvent(snapshot) { OccurredAt = snapshot.SourceUpdatedAt });
+    }
+
+    public async Task RotateIdentityAsync(long userId, RotateIdentityRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.UserWhoAmI) || request.UserWhoAmI.Length > 128)
+            throw new ValidationException("A game identity of at most 128 characters is required.");
+        AccountSnapshot snapshot;
+        await _unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
+        try
+        {
+            if (!await _unitOfWork.Users.RotateIdentityAsync(userId, request.UserWhoAmI, request.ExpectedRowVersion, cancellationToken))
+                throw new BusinessConflictException("The user changed or was deleted. Reload and retry.");
+            snapshot = await ReadAccountSnapshotAsync(userId, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
+        }
+        catch (PostgresException exception) when (exception.SqlState == "23505")
+        {
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
+            throw new BusinessConflictException("The game identity is already in use.");
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+        await PublishAccountEventAsync(new AccountIdentityRotatedEvent(snapshot) { OccurredAt = snapshot.SourceUpdatedAt });
     }
 
     private async Task<AccountSnapshot> ReadAccountSnapshotAsync(long userId, CancellationToken cancellationToken)
@@ -240,6 +271,7 @@ public sealed class AccountsService : IAccountsService
 
     public async Task GrantAchievementAsync(GrantAchievementRequest request, CancellationToken cancellationToken = default)
     {
+        var unlock = new UserAchievement { UserId = request.UserId, AchievementId = request.AchievementId };
         await _unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
@@ -248,17 +280,18 @@ public sealed class AccountsService : IAccountsService
             if (await _unitOfWork.Achievements.GetByIdAsync(request.AchievementId, cancellationToken) is null)
                 throw new NotFoundException($"Achievement {request.AchievementId} was not found.");
 
-            var added = await _unitOfWork.UserAchievements.AddAsync(
-                new UserAchievement { UserId = request.UserId, AchievementId = request.AchievementId }, cancellationToken);
+            var added = await _unitOfWork.UserAchievements.AddAsync(unlock, cancellationToken);
             if (!added)
                 throw new BusinessConflictException("The user already has this achievement.");
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
             throw;
         }
+        await PublishAccountEventAsync(new AchievementUnlockedEvent(unlock.UserId, unlock.AchievementId,
+            unlock.UnlockedAt) { OccurredAt = unlock.UnlockedAt });
     }
 
 }

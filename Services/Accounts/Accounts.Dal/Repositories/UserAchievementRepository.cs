@@ -1,6 +1,7 @@
 using Accounts.Domain.Models;
 using Dapper;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace Accounts.Dal.Repositories;
 
@@ -43,13 +44,15 @@ public sealed class UserAchievementRepository : IUserAchievementRepository
             INSERT INTO accounts.user_achievements (user_id, achievement_id)
             VALUES (@UserId, @AchievementId)
             ON CONFLICT (user_id, achievement_id) DO NOTHING
+            RETURNING unlocked_at
             """;
-        var command = new CommandDefinition(
-            sql,
-            new { userAchievement.UserId, userAchievement.AchievementId },
-            _currentTransaction(),
-            cancellationToken: cancellationToken);
-        return await _connection.ExecuteAsync(command) > 0;
+        await using var command = new NpgsqlCommand(sql, _connection, _currentTransaction());
+        command.Parameters.AddWithValue("UserId", NpgsqlDbType.Bigint, userAchievement.UserId);
+        command.Parameters.AddWithValue("AchievementId", NpgsqlDbType.Bigint, userAchievement.AchievementId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken)) return false;
+        userAchievement.UnlockedAt = reader.GetFieldValue<DateTimeOffset>(0);
+        return true;
     }
 
     public async Task<bool> DeleteAsync(

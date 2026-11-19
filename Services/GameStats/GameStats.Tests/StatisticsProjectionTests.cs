@@ -75,6 +75,24 @@ public sealed class StatisticsProjectionTests
     }
 
     [Fact]
+    public void Late_identity_rotations_cannot_overwrite_newer_snapshots_or_remove_unlocks()
+    {
+        var rotated = new AccountIdentityRotatedEvent(Account() with { SourceVersion = 2, UserWhoAmI = "rotated" });
+        var current = StatisticsProjection.Apply(LegacyStatistics(), rotated);
+        current = StatisticsProjection.Apply(current, new AchievementUnlockedEvent(8001, 42, Account().CreatedAt));
+        current = StatisticsProjection.Apply(current, new AccountProfileChangedEvent(Account() with
+        {
+            SourceVersion = 3, UserWhoAmI = "latest-identity"
+        }));
+        var result = StatisticsProjection.Apply(current, rotated with { EventId = Guid.NewGuid() });
+
+        Assert.Equal("latest-identity", result["user_whoami"].AsString);
+        Assert.Equal(3L, result["source_version"].AsInt64);
+        Assert.Equal(new BsonArray { "First Steps", new BsonInt64(42) }, result["progress"]["achievements_got"]);
+        Assert.Equal(LegacyStatistics()["totals"], result["totals"]);
+    }
+
+    [Fact]
     public void Unlock_before_account_creation_is_retained_when_the_identity_arrives()
     {
         var early = StatisticsProjection.Apply(null,

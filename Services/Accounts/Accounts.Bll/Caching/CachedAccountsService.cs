@@ -47,6 +47,17 @@ public sealed class CachedAccountsService(IAccountsService inner, ICacheAside ca
         await invalidator.InvalidateAsync(["accounts"], "user deleted");
     }
 
+    public async Task RotateIdentityAsync(long userId, RotateIdentityRequest request, CancellationToken cancellationToken = default)
+    {
+        try { await inner.RotateIdentityAsync(userId, request, cancellationToken); }
+        catch (AccountEventPublicationException)
+        {
+            await invalidator.InvalidateAsync(["accounts"], "identity rotated; event publication failed");
+            throw;
+        }
+        await invalidator.InvalidateAsync(["accounts"], "identity rotated");
+    }
+
     public Task<DonationResponse?> GetDonationAsync(long donationId, CancellationToken cancellationToken = default) =>
         inner.GetDonationAsync(donationId, cancellationToken);
 

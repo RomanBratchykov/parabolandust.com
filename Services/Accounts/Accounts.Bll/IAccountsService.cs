@@ -8,6 +8,7 @@ public interface IAccountsService
     Task<long> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default);
     Task UpdateUserAsync(long userId, UpdateUserRequest request, CancellationToken cancellationToken = default);
     Task DeleteUserAsync(long userId, long expectedRowVersion, CancellationToken cancellationToken = default);
+    Task RotateIdentityAsync(long userId, RotateIdentityRequest request, CancellationToken cancellationToken = default);
     Task<DonationResponse?> GetDonationAsync(long donationId, CancellationToken cancellationToken = default);
     Task<long> CreateDonationAsync(CreateDonationRequest request, CancellationToken cancellationToken = default);
     Task UpdateDonationAsync(long donationId, UpdateDonationRequest request, CancellationToken cancellationToken = default);

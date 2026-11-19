@@ -87,6 +87,66 @@ public sealed class AccountPublicationPostgresTests
         new(unitOfWork, new MapperConfiguration(options => options.AddProfile<AccountMappingProfile>(),
             NullLoggerFactory.Instance).CreateMapper(), NullLogger<AccountsService>.Instance, publisher, publisher);
 
+    [AccountsPostgresFact]
+    public async Task Identity_and_unlock_events_use_source_versions_and_timestamps_and_duplicate_grants_publish_nothing()
+    {
+        await using var unitOfWork = new UnitOfWork(Environment.GetEnvironmentVariable("ACCOUNTS_TEST_CONNECTION")!);
+        var publisher = new RecordingPublisher(unitOfWork);
+        var service = CreateService(unitOfWork, publisher);
+        var achievementId = await unitOfWork.Achievements.AddAsync(new Achievement
+        {
+            AchievementName = "lab92_" + Guid.NewGuid().ToString("N"), AchievementDescription = "Event test"
+        });
+        long userId = 0;
+        try
+        {
+            var request = Request();
+            userId = await service.CreateUserAsync(new CreateUserRequest
+            {
+                UserName = request.UserName, UserEmail = request.UserEmail, UserWhoAmI = request.UserWhoAmI,
+                PasswordHash = request.PasswordHash, InitialAchievementId = achievementId
+            });
+            Assert.Equal(2, publisher.Events.Count);
+            var unlock = Assert.IsType<AchievementUnlockedEvent>(publisher.Events[1]);
+            Assert.Equal(achievementId, unlock.AchievementId);
+            Assert.Equal(userId, unlock.UserId);
+            await using (var command = new NpgsqlCommand(
+                "SELECT unlocked_at FROM accounts.user_achievements WHERE user_id = @id AND achievement_id = @achievement", unitOfWork.Connection))
+            {
+                command.Parameters.AddWithValue("id", userId);
+                command.Parameters.AddWithValue("achievement", achievementId);
+                await using var reader = await command.ExecuteReaderAsync();
+                Assert.True(await reader.ReadAsync());
+                Assert.Equal(reader.GetFieldValue<DateTimeOffset>(0), unlock.UnlockedAt);
+            }
+            var identity = "lab92-" + Guid.NewGuid().ToString("N");
+            await service.RotateIdentityAsync(userId, new RotateIdentityRequest { UserWhoAmI = identity, ExpectedRowVersion = 1 });
+            var rotated = Assert.IsType<AccountIdentityRotatedEvent>(publisher.Events[2]);
+            Assert.Equal(identity, rotated.Account.UserWhoAmI);
+            Assert.Equal(2, rotated.Account.SourceVersion);
+            AssertSnapshot(rotated.Account, (await unitOfWork.Users.GetByIdAsync(userId))!);
+            await Assert.ThrowsAsync<BusinessConflictException>(() => service.RotateIdentityAsync(userId,
+                new RotateIdentityRequest { UserWhoAmI = "stale-" + userId, ExpectedRowVersion = 1 }));
+            await Assert.ThrowsAsync<BusinessConflictException>(() =>
+                service.GrantAchievementAsync(new GrantAchievementRequest(userId, achievementId)));
+            Assert.Equal(3, publisher.Events.Count);
+            Assert.Equal(2, (await unitOfWork.Users.GetByIdAsync(userId))!.RowVersion);
+        }
+        finally
+        {
+            if (userId != 0)
+            {
+                await using var command = new NpgsqlCommand("DELETE FROM accounts.user_achievements WHERE user_id = @id", unitOfWork.Connection);
+                command.Parameters.AddWithValue("id", userId);
+                await command.ExecuteNonQueryAsync();
+                await DeleteTestUserAsync(unitOfWork, userId);
+            }
+            await using var cleanup = new NpgsqlCommand("DELETE FROM accounts.achievement WHERE achievement_id = @id", unitOfWork.Connection);
+            cleanup.Parameters.AddWithValue("id", achievementId);
+            await cleanup.ExecuteNonQueryAsync();
+        }
+    }
+
     private static CreateUserRequest Request()
     {
         var suffix = Guid.NewGuid().ToString("N");

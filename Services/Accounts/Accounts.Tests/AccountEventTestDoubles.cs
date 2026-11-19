@@ -20,6 +20,7 @@ internal sealed class AccountEventTestDoubles : IEventCorrelation, IEventPublish
     public List<IntegrationEvent> Published { get; } = [];
     public bool PublicationSawCommit { get; private set; }
     public Exception? PublishFailure { get; set; }
+    public int PublishFailureAt { get; set; } = 1;
 
     public AccountsService Service() => new(UnitOfWork, new MapperConfiguration(
         options => options.AddProfile<AccountMappingProfile>(), NullLoggerFactory.Instance).CreateMapper(),
@@ -30,7 +31,8 @@ internal sealed class AccountEventTestDoubles : IEventCorrelation, IEventPublish
         cancellationToken.ThrowIfCancellationRequested();
         PublicationSawCommit = UnitOfWork.Committed && !UnitOfWork.Active;
         Published.Add(value);
-        return PublishFailure is null ? Task.CompletedTask : Task.FromException(PublishFailure);
+        return PublishFailure is null || Published.Count != PublishFailureAt
+            ? Task.CompletedTask : Task.FromException(PublishFailure);
     }
 
     public static Task MutateAsync(IAccountsService service, string operation, CancellationToken token = default) =>
@@ -46,6 +48,10 @@ internal sealed class AccountEventTestDoubles : IEventCorrelation, IEventPublish
                 UserName = "requested-name", UserEmail = "requested@example.test", ExpectedRowVersion = 11
             }, token),
             "delete" => service.DeleteUserAsync(1234, 11, token),
+            "identity" => service.RotateIdentityAsync(1234, new RotateIdentityRequest
+            {
+                UserWhoAmI = "requested-identity", ExpectedRowVersion = 11
+            }, token),
             _ => throw new ArgumentException("Unknown test mutation.", nameof(operation))
         };
 }
@@ -57,14 +63,16 @@ internal sealed class StubUnitOfWork : IUnitOfWork, IUserRepository
     public NpgsqlTransaction? Transaction => throw new NotSupportedException();
     public IGameLinkingRepository GameLinking => throw new NotSupportedException();
     public IDonationRepository Donations => throw new NotSupportedException();
-    public IAchievementRepository Achievements => throw new NotSupportedException();
-    public IUserAchievementRepository UserAchievements => throw new NotSupportedException();
+    public IAchievementRepository Achievements => new StubAchievements(this);
+    public IUserAchievementRepository UserAchievements => new StubUnlocks(this);
     public bool Active { get; private set; }
     public bool Committed { get; private set; }
     public bool RolledBack { get; private set; }
     public bool SnapshotReadInsideTransaction { get; private set; }
     public string? FailureAt { get; set; }
     public bool WriteAccepted { get; set; } = true;
+    public bool AchievementExists { get; set; } = true;
+    public bool UserExists { get; set; } = true;
     public TaskCompletionSource? CommitGate { get; set; }
     public Action? AfterCommit { get; set; }
     private string operation = "update";
@@ -93,7 +101,7 @@ internal sealed class StubUnitOfWork : IUnitOfWork, IUserRepository
     }
 
     public Task<AccountUser?> GetByIdAsync(long userId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<AccountUser?>(Row());
+        Task.FromResult<AccountUser?>(UserExists ? Row() : null);
 
     public Task<AccountUser?> GetIncludingDeletedAsync(long userId, CancellationToken cancellationToken = default)
     {
@@ -119,6 +127,13 @@ internal sealed class StubUnitOfWork : IUnitOfWork, IUserRepository
         return Task.FromResult(WriteAccepted);
     }
 
+    public Task<bool> RotateIdentityAsync(long userId, string identity, long expectedRowVersion,
+        CancellationToken cancellationToken = default)
+    {
+        Write("identity");
+        return Task.FromResult(WriteAccepted);
+    }
+
     private void Write(string mutation)
     {
         if (FailureAt == "write") throw new PostgresException("Write conflict", "ERROR", "ERROR", "P0001");
@@ -128,7 +143,7 @@ internal sealed class StubUnitOfWork : IUnitOfWork, IUserRepository
     private AccountUser Row() => new()
     {
         UserId = 1234, UserName = "persisted-name", UserEmail = "persisted@example.test",
-        UserWhoAmI = "persisted-identity", PasswordHash = "private-password",
+        UserWhoAmI = operation == "identity" ? "rotated-persisted-identity" : "persisted-identity", PasswordHash = "private-password",
         OAuthProvider = "private-provider", OAuthId = "private-oauth-id",
         CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         UpdatedAt = operation == "create" ? null : new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
@@ -136,4 +151,26 @@ internal sealed class StubUnitOfWork : IUnitOfWork, IUserRepository
     };
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    private sealed class StubAchievements(StubUnitOfWork owner) : IAchievementRepository
+    {
+        public Task<Achievement?> GetByIdAsync(long id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(owner.AchievementExists ? new Achievement { AchievementId = id } : null);
+        public Task<IReadOnlyList<Achievement>> GetAllAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<long> AddAsync(Achievement entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> UpdateAsync(Achievement entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class StubUnlocks(StubUnitOfWork owner) : IUserAchievementRepository
+    {
+        public Task<bool> AddAsync(UserAchievement value, CancellationToken cancellationToken = default)
+        {
+            if (owner.FailureAt is "write" or "unlock") throw new InvalidOperationException("Unlock write failed");
+            value.UnlockedAt = new DateTimeOffset(2026, 3, 1, 0, 0, 0, TimeSpan.Zero);
+            return Task.FromResult(owner.WriteAccepted);
+        }
+        public Task<IReadOnlyList<UserAchievement>> GetForUserAsync(long userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> DeleteAsync(long userId, long achievementId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
 }
