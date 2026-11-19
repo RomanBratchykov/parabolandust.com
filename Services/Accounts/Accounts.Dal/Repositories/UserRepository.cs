@@ -17,21 +17,29 @@ public sealed class UserRepository : IUserRepository
         _currentTransaction = currentTransaction;
     }
 
-    public async Task<AccountUser?> GetByIdAsync(
+    public Task<AccountUser?> GetByIdAsync(long userId, CancellationToken cancellationToken = default) =>
+        ReadAsync(userId, false, cancellationToken);
+
+    public Task<AccountUser?> GetIncludingDeletedAsync(long userId, CancellationToken cancellationToken = default) =>
+        ReadAsync(userId, true, cancellationToken);
+
+    private async Task<AccountUser?> ReadAsync(
         long userId,
-        CancellationToken cancellationToken = default)
+        bool includeDeleted,
+        CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT user_id, user_name, user_email, password_hash, oauth_provider, oauth_id,
                    created_at, created_by, updated_at, updated_by, user_whoami,
                    user_photo_url, row_version, is_deleted
             FROM accounts.users
-            WHERE user_id = @userId AND is_deleted IS FALSE
+            WHERE user_id = @userId AND (is_deleted IS FALSE OR @includeDeleted)
             """;
 
         await EnsureOpenAsync(cancellationToken);
         await using var command = new NpgsqlCommand(sql, _connection, _currentTransaction());
         command.Parameters.AddWithValue("userId", NpgsqlDbType.Bigint, userId);
+        command.Parameters.AddWithValue("includeDeleted", NpgsqlDbType.Boolean, includeDeleted);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         if (!await reader.ReadAsync(cancellationToken))

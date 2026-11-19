@@ -27,4 +27,5 @@
   <Project Path="Services/Accounts/Accounts.Bll/Accounts.Bll.csproj" />
   <Project Path="Services/Accounts/Accounts.Dal/Accounts.Dal.csproj" />
   <Project Path="Services/Accounts/Accounts.Domain/Accounts.Domain.csproj" />
+  <Project Path="Services/Accounts/Accounts.Tests/Accounts.Tests.csproj" />
 </Solution>

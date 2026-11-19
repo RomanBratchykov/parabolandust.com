@@ -1,5 +1,6 @@
 using System.Globalization;
 using Accounts.Bll.Contracts;
+using Accounts.Bll.Events;
 using Platform.Caching;
 
 namespace Accounts.Bll.Caching;
@@ -13,20 +14,36 @@ public sealed class CachedAccountsService(IAccountsService inner, ICacheAside ca
 
     public async Task<long> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
     {
-        var userId = await inner.CreateUserAsync(request, cancellationToken);
+        long userId;
+        try { userId = await inner.CreateUserAsync(request, cancellationToken); }
+        catch (AccountEventPublicationException)
+        {
+            await invalidator.InvalidateAsync(["accounts"], "user created; event publication failed");
+            throw;
+        }
         await invalidator.InvalidateAsync(["accounts"], "user created");
         return userId;
     }
 
     public async Task UpdateUserAsync(long userId, UpdateUserRequest request, CancellationToken cancellationToken = default)
     {
-        await inner.UpdateUserAsync(userId, request, cancellationToken);
+        try { await inner.UpdateUserAsync(userId, request, cancellationToken); }
+        catch (AccountEventPublicationException)
+        {
+            await invalidator.InvalidateAsync(["accounts"], "user updated; event publication failed");
+            throw;
+        }
         await invalidator.InvalidateAsync(["accounts"], "user updated");
     }
 
     public async Task DeleteUserAsync(long userId, long expectedRowVersion, CancellationToken cancellationToken = default)
     {
-        await inner.DeleteUserAsync(userId, expectedRowVersion, cancellationToken);
+        try { await inner.DeleteUserAsync(userId, expectedRowVersion, cancellationToken); }
+        catch (AccountEventPublicationException)
+        {
+            await invalidator.InvalidateAsync(["accounts"], "user deleted; event publication failed");
+            throw;
+        }
         await invalidator.InvalidateAsync(["accounts"], "user deleted");
     }
 

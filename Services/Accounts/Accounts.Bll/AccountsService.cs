@@ -8,6 +8,9 @@ using AutoMapper;
 using Npgsql;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Accounts.Bll.Events;
+using Platform.Messaging;
+using Platform.Messaging.Events;
 
 public sealed class AccountsService : IAccountsService
 {
@@ -15,12 +18,17 @@ public sealed class AccountsService : IAccountsService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly ILogger<AccountsService> _logger;
+    private readonly IEventPublisher _publisher;
+    private readonly IEventCorrelation _correlation;
 
-    public AccountsService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<AccountsService> logger)
+    public AccountsService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<AccountsService> logger,
+        IEventPublisher publisher, IEventCorrelation correlation)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
+        _publisher = publisher;
+        _correlation = correlation;
     }
 
     public async Task<UserResponse?> GetUserAsync(long userId, CancellationToken cancellationToken = default)
@@ -39,6 +47,8 @@ public sealed class AccountsService : IAccountsService
             (request.PasswordHash is not null && hasOAuthIdentity))
             throw new ValidationException("Provide either a password hash or a complete OAuth identity.");
 
+        AccountSnapshot snapshot;
+        long userId;
         await _unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
@@ -46,7 +56,7 @@ public sealed class AccountsService : IAccountsService
                 await _unitOfWork.Achievements.GetByIdAsync(achievementId, cancellationToken) is null)
                 throw new NotFoundException($"Achievement {achievementId} was not found.");
 
-            var userId = await _unitOfWork.Users.AddAsync(new AccountUser
+            userId = await _unitOfWork.Users.AddAsync(new AccountUser
             {
                 UserName = request.UserName,
                 UserEmail = request.UserEmail,
@@ -61,53 +71,103 @@ public sealed class AccountsService : IAccountsService
                 await _unitOfWork.UserAchievements.AddAsync(
                     new UserAchievement { UserId = userId, AchievementId = initialAchievementId }, cancellationToken);
             }
+            snapshot = await ReadAccountSnapshotAsync(userId, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
-            activity?.SetTag("user.id", userId);
-            _logger.LogInformation("Account created for user {UserId}", userId);
-            return userId;
         }
         catch (PostgresException exception) when (exception.SqlState == "23505")
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
             throw new BusinessConflictException("A user with the same unique account details already exists.");
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(cancellationToken);
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
             throw;
         }
+        activity?.SetTag("user.id", userId);
+        _logger.LogInformation("Account created for user {UserId}", userId);
+        await PublishAccountEventAsync(new AccountCreatedEvent(snapshot) { OccurredAt = snapshot.SourceUpdatedAt });
+        return userId;
     }
 
     public async Task UpdateUserAsync(long userId, UpdateUserRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken)
-            ?? throw new NotFoundException($"User {userId} was not found.");
-        user.UserName = request.UserName;
-        user.UserEmail = request.UserEmail;
-        user.UserPhotoUrl = request.UserPhotoUrl;
+        AccountSnapshot snapshot;
+        await _unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            await _unitOfWork.Users.UpdateProfileAsync(user, request.ExpectedRowVersion, cancellationToken);
+            var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken)
+                ?? throw new NotFoundException($"User {userId} was not found.");
+            user.UserName = request.UserName;
+            user.UserEmail = request.UserEmail;
+            user.UserPhotoUrl = request.UserPhotoUrl;
+            if (!await _unitOfWork.Users.UpdateProfileAsync(user, request.ExpectedRowVersion, cancellationToken))
+                throw new BusinessConflictException("The user changed since it was loaded. Reload and retry.");
+            snapshot = await ReadAccountSnapshotAsync(userId, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch (PostgresException exception) when (exception.SqlState == "P0001")
         {
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
             throw new BusinessConflictException("The user changed since it was loaded. Reload and retry.");
         }
         catch (PostgresException exception) when (exception.SqlState == "23505")
         {
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
             throw new BusinessConflictException("The user name or email is already in use.");
         }
+        catch
+        {
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+        await PublishAccountEventAsync(new AccountProfileChangedEvent(snapshot) { OccurredAt = snapshot.SourceUpdatedAt });
     }
 
     public async Task DeleteUserAsync(long userId, long expectedRowVersion, CancellationToken cancellationToken = default)
     {
+        AccountSnapshot snapshot;
+        await _unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            await _unitOfWork.Users.SoftDeleteAsync(userId, expectedRowVersion, cancellationToken);
+            if (!await _unitOfWork.Users.SoftDeleteAsync(userId, expectedRowVersion, cancellationToken))
+                throw new BusinessConflictException("The user changed or was deleted. Reload and retry.");
+            snapshot = await ReadAccountSnapshotAsync(userId, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch (PostgresException exception) when (exception.SqlState == "P0001")
         {
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
             throw new BusinessConflictException("The user changed or was deleted. Reload and retry.");
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+        await PublishAccountEventAsync(new AccountDeletedEvent(snapshot) { OccurredAt = snapshot.SourceUpdatedAt });
+    }
+
+    private async Task<AccountSnapshot> ReadAccountSnapshotAsync(long userId, CancellationToken cancellationToken)
+    {
+        var user = await _unitOfWork.Users.GetIncludingDeletedAsync(userId, cancellationToken)
+            ?? throw new InvalidOperationException("The persisted account snapshot was not found.");
+        return new AccountSnapshot(user.UserId, user.UserName, user.UserEmail, user.UserWhoAmI,
+            user.CreatedAt, user.UpdatedAt ?? user.CreatedAt, user.RowVersion, user.IsDeleted);
+    }
+
+    private async Task PublishAccountEventAsync(IntegrationEvent value)
+    {
+        try
+        {
+            // The source committed; a disconnected HTTP caller must not suppress publication.
+            using var budget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await _publisher.PublishAsync(value with { CorrelationId = _correlation.Current }, budget.Token);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Account change committed but event {EventId} publication failed", value.EventId);
+            throw new AccountEventPublicationException(exception);
         }
     }
 
