@@ -34,6 +34,7 @@ internal sealed class BrokerDouble
     internal CancellationToken ChannelToken { get; private set; }
     internal IChannel Channel { get; }
     internal IConnection Connection { get; }
+    internal bool IsOpen { get; set; } = true;
 
     internal BrokerDouble()
     {
@@ -72,6 +73,8 @@ internal sealed class BrokerDouble
         });
         Connection = RecordingProxy<IConnection>.Create((method, args) =>
         {
+            if (method.Name == "get_IsOpen") return IsOpen;
+            if (method.Name is "Dispose" or "CloseAsync") return method.ReturnType == typeof(Task) ? Task.CompletedTask : null;
             if (method.Name != "CreateChannelAsync") throw new NotSupportedException(method.Name);
             ChannelOptions = (CreateChannelOptions?)args[0];
             ChannelToken = (CancellationToken)args[1]!;

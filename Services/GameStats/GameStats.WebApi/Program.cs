@@ -11,9 +11,11 @@ using OpenTelemetry.Trace;
 using Platform.ServiceDefaults;
 using Platform.Caching;
 using Platform.ServiceDefaults.Grpc;
+using GameStats.WebApi.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+builder.AddGameStatsMessaging();
 builder.WebHost.ConfigureKestrel(options =>
     options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
 builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcLoggingInterceptor>());

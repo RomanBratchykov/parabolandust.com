@@ -11,6 +11,8 @@ public sealed class RabbitMqEventConsumer : BackgroundService
     private readonly RabbitMqDeliveryProcessor processor;
     private readonly RabbitMqConsumerOptions options;
     private readonly ILogger<RabbitMqEventConsumer> logger;
+    private int consuming;
+    public bool IsConsuming => Volatile.Read(ref consuming) != 0;
 
     public RabbitMqEventConsumer(IConnection connection, RabbitMqDeliveryProcessor processor,
         RabbitMqConsumerOptions options, ILogger<RabbitMqEventConsumer> logger)
@@ -44,6 +46,7 @@ public sealed class RabbitMqEventConsumer : BackgroundService
         var failed = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         Task OnShutdown(object sender, ShutdownEventArgs args)
         {
+            Volatile.Write(ref consuming, 0);
             failed.TrySetResult(new IOException($"Broker channel closed: {args.ReplyText}"));
             return Task.CompletedTask;
         }
@@ -55,6 +58,7 @@ public sealed class RabbitMqEventConsumer : BackgroundService
             var consumer = new AsyncEventingBasicConsumer(channel);
             consumer.UnregisteredAsync += (_, _) =>
             {
+                Volatile.Write(ref consuming, 0);
                 // A broker basic.cancel ends this subscription without closing the channel.
                 failed.TrySetResult(new IOException($"Broker cancelled the subscription for {options.Queue}."));
                 return Task.CompletedTask;
@@ -65,6 +69,7 @@ public sealed class RabbitMqEventConsumer : BackgroundService
                 catch (OperationCanceledException) when (session.IsCancellationRequested) { }
                 catch (Exception exception)
                 {
+                    Volatile.Write(ref consuming, 0);
                     // ReceivedAsync exceptions alone would only reach RabbitMQ's callback
                     // error event, leaving an unacknowledged delivery stuck on this channel.
                     failed.TrySetResult(exception);
@@ -72,12 +77,14 @@ public sealed class RabbitMqEventConsumer : BackgroundService
                 }
             };
             await channel.BasicConsumeAsync(options.Queue, autoAck: false, consumer, session.Token);
+            Volatile.Write(ref consuming, 1);
             logger.LogInformation("Consuming {Queue} with prefetch {PrefetchCount}", options.Queue, options.PrefetchCount);
             var error = await failed.Task.WaitAsync(stoppingToken);
             throw error;
         }
         finally
         {
+            Volatile.Write(ref consuming, 0);
             session.Cancel();
             channel.ChannelShutdownAsync -= OnShutdown;
         }

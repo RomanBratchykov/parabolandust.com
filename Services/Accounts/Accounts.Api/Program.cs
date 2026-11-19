@@ -7,11 +7,13 @@ using Accounts.Api.ExceptionHandling;
 using Platform.ServiceDefaults;
 using Platform.Caching;
 using Platform.ServiceDefaults.Caching;
+using Accounts.Api.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options =>
     options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
 builder.AddServiceDefaults();
+builder.AddAccountsMessaging();
 builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks = true);
 builder.Services.AddPlatformCaching();
 builder.Services.AddCacheHealthChecks();

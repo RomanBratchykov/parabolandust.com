@@ -11,10 +11,12 @@ using Platform.ServiceDefaults.Grpc;
 using Platform.Caching;
 using Serilog;
 using Serilog.Context;
+using Newsletters.Api.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.AddNewslettersMessaging();
 builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks = true);
 builder.Services.AddPlatformCaching();
 
