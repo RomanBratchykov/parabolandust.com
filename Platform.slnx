@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
   <Project Path="Platform.Caching/Platform.Caching.csproj" />
+  <Project Path="Platform.Messaging/Platform.Messaging.csproj" />
+  <Project Path="Platform.Messaging.Tests/Platform.Messaging.Tests.csproj" />
   <Project Path="Platform.AppHost/Platform.AppHost.csproj" />
   <Project Path="Platform.ApiGateway/Platform.ApiGateway.csproj" />
   <Project Path="Platform.Aggregator/Platform.Aggregator.csproj" />
