@@ -14,8 +14,11 @@ var accountsDb = postgres.AddDatabase("AccountsDb", "accounts_db_p1");
 var newslettersDb = postgres.AddDatabase("NewslettersDb", "accounts_db_p2");
 
 var mongoPassword = builder.AddParameter("mongo-password", secret: true);
+#pragma warning disable ASPIREMONGODB001 // Single-member replica set enables local projection transactions.
 var mongo = builder.AddMongoDB("platform-mongo", password: mongoPassword)
+    .WithReplicaSet()
     .WithDataVolume("parabolandust-platform-mongo-data");
+#pragma warning restore ASPIREMONGODB001
 
 var gameStatsDb = mongo.AddDatabase("GameStatsDb", "game_stats_db");
 var redis = builder.AddRedis("redis")
