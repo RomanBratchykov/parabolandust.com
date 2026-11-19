@@ -50,6 +50,18 @@ public sealed class RabbitMqDeliveryProcessor
             return;
         }
 
+        var userId = value switch
+        {
+            AccountCreatedEvent created => created.Account.UserId,
+            AccountProfileChangedEvent changed => changed.Account.UserId,
+            AccountDeletedEvent deleted => deleted.Account.UserId,
+            AccountIdentityRotatedEvent rotated => rotated.Account.UserId,
+            AchievementUnlockedEvent unlocked => unlocked.UserId,
+            _ => throw new InvalidOperationException("Unsupported validated integration event.")
+        };
+        var identifiers = new Dictionary<string, object> { ["UserId"] = userId };
+        if (value is AchievementUnlockedEvent achievement) identifiers["AchievementId"] = achievement.AchievementId;
+        using var businessScope = logger.BeginScope(identifiers);
         try
         {
             logger.LogInformation("Received {EventType} {EventId}", properties.Type, value.EventId);

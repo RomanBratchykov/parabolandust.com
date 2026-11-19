@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Platform.Messaging.Events;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -17,7 +18,7 @@ internal sealed class ConsumerHarness : IDisposable
     internal int ScopesCreated { get; private set; }
     internal int ScopesDisposed { get; private set; }
 
-    internal ConsumerHarness(TimeSpan? retryDelay = null)
+    internal ConsumerHarness(TimeSpan? retryDelay = null, ILogger<RabbitMqDeliveryProcessor>? logger = null)
     {
         Options = new(RabbitMqTopology.NewslettersQueue)
         {
@@ -28,7 +29,7 @@ internal sealed class ConsumerHarness : IDisposable
             .AddScoped<IIntegrationEventHandler>(_ => new Handler(this))
             .BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         Processor = new(Services.GetRequiredService<IServiceScopeFactory>(), Options,
-            NullLogger<RabbitMqDeliveryProcessor>.Instance);
+            logger ?? NullLogger<RabbitMqDeliveryProcessor>.Instance);
     }
 
     internal RabbitMqEventConsumer Worker(IConnection? connection = null) => new(connection ?? Broker.Connection,

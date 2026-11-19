@@ -33,11 +33,12 @@ public sealed class NewsletterAccountProjectionPostgresTests
         var deleted = new AccountDeletedEvent(updated.Account with { SourceVersion = 3, IsDeleted = true });
         var stale = new AccountCreatedEvent(account);
         Guid[] eventIds = [created.EventId, updated.EventId, deleted.EventId, stale.EventId];
-        var newsletter = new Newsletter(userId, "Event test newsletter", "Snapshot preservation");
+        var newsletter = new Newsletter(4001, "Event test newsletter", "Snapshot preservation");
         try
         {
             await handler.HandleAsync(created, default);
             context.Newsletters.Add(newsletter);
+            await context.SaveChangesAsync();
             var subscription = new Subscription(userId, newsletter.Id, "event@example.test");
             context.Subscriptions.Add(subscription);
             await context.SaveChangesAsync();
@@ -77,7 +78,7 @@ public sealed class NewsletterAccountProjectionPostgresTests
         finally
         {
             await context.Subscriptions.Where(value => value.UserId == userId).ExecuteDeleteAsync();
-            await context.Newsletters.Where(value => value.Id == userId).ExecuteDeleteAsync();
+            await context.Newsletters.Where(value => value.Id == newsletter.Id).ExecuteDeleteAsync();
             await context.UsersCopy.Where(value => value.Id == userId).ExecuteDeleteAsync();
             await context.ProcessedEvents.Where(value => eventIds.Contains(value.EventId)).ExecuteDeleteAsync();
         }

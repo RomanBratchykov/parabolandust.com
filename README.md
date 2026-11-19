@@ -93,10 +93,10 @@ This solution implements the Accounts API with PostgreSQL, a Dapper/ADO.NET data
 From the repository root, run:
 
 ```bash
-dotnet run --project Services/Accounts/Accounts.AppHost
+dotnet run --project Platform.AppHost
 ```
 
-The AppHost starts a PostgreSQL container and the Accounts API. At first launch, Aspire prompts for the secret `postgres-password`; use `secret` to match the local Lab 01 Compose configuration, or provide a different password. PostgreSQL creates the `accounts_db_p1` database and applies `db/p1/schema.sql`, `db/p1/seed.sql`, and `db/p1/procedures.sql` in that order when its data volume is initialized for the first time.
+Use the [integrated AppHost setup](#integrated-platform-lab-5) to configure its database secrets and start the APIs with PostgreSQL, MongoDB, Redis, and RabbitMQ. The older `Services/Accounts/Accounts.AppHost` starts only PostgreSQL and Accounts; it does not supply the Redis and messaging dependencies now required by the API. Accounts schema, seeds, and procedures run only when the PostgreSQL volume is first initialized.
 
 Open the Aspire Dashboard URL printed in the console to see the API and database resources. In Development, Swagger UI is available at the API resource's `/swagger` path.
 
@@ -112,6 +112,8 @@ The API reads `ConnectionStrings:AccountsDb` from `Services/Accounts/Accounts.Ap
 
 ```bash
 ConnectionStrings__AccountsDb='Host=localhost;Port=5432;Database=accounts_db_p1;Username=postgres;Password=secret' \
+  ConnectionStrings__redis='localhost:6379,abortConnect=false' \
+  ConnectionStrings__messaging='amqp://<broker-user>:<broker-password>@localhost:<amqp-port>' \
   dotnet run --project Services/Accounts/Accounts.Api
 ```
 
@@ -122,6 +124,7 @@ Apply the Lab 01 SQL files to the target database before using the API. When lau
 - `GET /api/users/{userId}`
 - `POST /api/users` (optionally grant `initialAchievementId` in the same transaction)
 - `PUT /api/users/{userId}`
+- `PUT /api/users/{userId}/identity` with `userWhoAmI` and `expectedRowVersion`
 - `DELETE /api/users/{userId}?expectedRowVersion=1`
 - `GET /api/donations/{donationId}`
 - `POST /api/donations`
@@ -295,12 +298,12 @@ dotnet run --project Platform.AppHost
 ```
 
 Open the Dashboard URL printed by AppHost. It starts persistent PostgreSQL,
-MongoDB, and Redis, then `accounts-api`, `newsletters-api`, `gamestats-api`,
+MongoDB, Redis, and RabbitMQ with Management UI, then `accounts-api`, `newsletters-api`, `gamestats-api`,
 `aggregator`, and `gateway`. The public Gateway listens on `http://localhost:5000`.
 Each HTTP process exposes `/health` (readiness) and `/alive` (liveness).
 In Development, each process also exposes `/swagger`.
 
-The connection names are `AccountsDb`, `NewslettersDb`, `GameStatsDb`, and `redis`.
+The connection names are `AccountsDb`, `NewslettersDb`, `GameStatsDb`, `redis`, and `messaging`.
 Accounts owns PostgreSQL `accounts_db_p1`; Newsletters owns PostgreSQL
 `accounts_db_p2`; GameStats reads MongoDB `game_stats_db`.
 The platform retains this repository's PostgreSQL services and game-domain
@@ -401,8 +404,9 @@ $env:ConnectionStrings__redis = "localhost:6379,abortConnect=false"
 
 `/health/cache` on each cache-enabled API and Aggregator returns JSON status
 and per-domain `entries`, `bytes`, `hits`, `misses`, and `invalidations`.
-`/health` is readiness and returns 503 when Redis is unavailable; `/alive`
-remains liveness. Generation gate waits and Redis operations use bounded budgets.
+`/health/ready` reports Redis outages as `Degraded` with HTTP 200; required
+database or messaging failures return 503. `/alive` remains liveness.
+Generation gate waits and Redis operations use bounded budgets.
 After startup, Redis failures fall back to the existing source readers. Inspect
 cache logs and the source spans to distinguish fallback from an L1 or L2 hit.
 
@@ -411,9 +415,10 @@ invalidation uses its own bounded token, clears local generations even if Redis
 fails, marks affected groups dirty, and retries marker advancement on a later
 read before trusting L2 again. This does not guarantee immediate coherence across
 processes during an outage. Another replica's existing L1 entry can remain until
-its short TTL; durable events and Redis pub/sub are outside this lab.
-GameStats has no owning write API: external MongoDB updates become visible within
-the 60-second service TTL, potentially plus a 30-second dashboard lifetime.
+its short TTL. Lab 8 account events now invalidate projection caches after their
+database commits; Redis pub/sub is not configured. Direct MongoDB writes outside
+the event pipeline still become visible within the 60-second service TTL,
+potentially plus a 30-second dashboard lifetime.
 
 To demonstrate recovery, warm a known record, stop only the Redis resource in
 Aspire, and make a cold valid read. Check that readiness fails while liveness
@@ -571,3 +576,108 @@ Live Aspire/OTLP verification and required screenshots remain outstanding:
 Debian WSL cannot attach its missing `ext4.vhdx`, and no native Docker CLI is
 available in this environment. Capture the retry/circuit metric, a business
 metric, degraded readiness JSON, and resource states once infrastructure runs.
+
+## Lab 8: Account events and projections
+
+Accounts publishes immutable schema-version-1 records through `Platform.Messaging`.
+Camel-case JSON carries `eventId`, `occurredAt`, `schemaVersion`, and optional
+`correlationId`. Account snapshots include only the source ID, name, email, game
+identity, creation/update timestamps, row version, and deletion state. Passwords,
+OAuth credentials, and historical subscription/run snapshots are excluded.
+
+| Event | Source operation | Routing key | Consumers |
+| --- | --- | --- | --- |
+| `AccountCreatedEvent` | `POST /api/users` | `account.created` | Newsletters and GameStats |
+| `AccountProfileChangedEvent` | `PUT /api/users/{id}` | `account.profile_changed` | Newsletters and GameStats |
+| `AccountDeletedEvent` | `DELETE /api/users/{id}?expectedRowVersion=…` | `account.deleted` | Newsletters and GameStats |
+| `AccountIdentityRotatedEvent` | `PUT /api/users/{id}/identity` | `account.identity_rotated` | Newsletters and GameStats |
+| `AchievementUnlockedEvent` | `POST /api/user-achievements`, or registration's `initialAchievementId` | `achievement.unlocked` | GameStats |
+
+The durable topic exchange `account-events` binds `account.*` to
+`newsletters.account-sync` and `gamestats.account-sync`; only GameStats also binds
+`achievement.*`. Each queue has its own `<queue>.dlq`, reached through the durable
+direct exchange `account-events.dlx` using the source queue name as routing key.
+Consumers declare this topology at startup, and the publisher also declares it
+before sending, so a stopped consumer's queue can retain new deliveries.
+
+Newsletters atomically records `newsletter.processed_events.event_id` with its
+`users_copy` update. Migration `20261119110140_AddAccountEventInbox` adds that
+inbox and a nonnegative `source_version` defaulting to zero for existing rows;
+the local `row_version` remains a separate concurrency token. The API applies EF
+migrations before starting consumers. The checked-in upgrade SQL is
+[`AddAccountEventInbox.sql`](Services/Newsletters/Newsletters.Dal/Migrations/AddAccountEventInbox.sql);
+apply it once to the previous EF schema only if managing upgrades manually,
+instead of applying the same migration through EF.
+
+GameStats uses a MongoDB transaction with snapshot reads and majority writes for
+`processed_events` and `stats_user`. Inbox `_id` is the canonical event UUID string.
+The projection reuses the unique `stats_user.user_id` index. Existing documents
+need no rewrite: missing source versions count as zero, and metadata is added as
+events arrive. AppHost enables a single-member replica set on the existing Mongo
+resource and retains `parabolandust-platform-mongo-data`. Standalone GameStats
+also requires a transaction-capable replica set; the database ping alone does
+not validate that capability. Use its complete generated connection string.
+
+Only a strictly newer account source version changes a projection. Source update
+timestamps are retained separately; MongoDB stores dates at BSON millisecond
+precision. Stale/equal events are recorded in the inbox without overwriting newer
+data, including deletion tombstones. An EventId redelivery skips the data update
+and retries cache invalidation. Existing accounts are not automatically backfilled.
+
+GameStats preserves gameplay totals and all other existing stat groups. New
+unlocks add Int64 source achievement IDs to `progress.achievements_got` without
+duplicates; existing string entries such as `First Steps` remain untouched.
+Unlock membership is independent of profile versions. An unlock arriving first
+creates zero totals and an empty identity until the account snapshot arrives.
+Deletion retains statistics with `is_deleted=true`; it does not erase runs or
+change the existing statistics reader's filtering. Subscription consent, status,
+delivery email snapshots, and `runs.player_snapshot`/`current_stats` never change
+through these handlers. Successful projection commits invalidate their domain
+and dashboard caches.
+
+Publication follows the successful source commit, using the persisted row version
+and timestamps. Messages are persistent and mandatory, with tracked publisher
+confirms. Each API has one Aspire-managed connection, while publishing and consumer
+sessions use separate channels. A consumer uses manual acknowledgement, serial
+dispatch, prefetch 10, and at most three queue-local retries after the first
+attempt, delayed one second each. Failed retry publication leaves the original
+unacknowledged and recreates the channel after five seconds. Malformed/unsupported
+events, permanent business errors, and exhausted retries are rejected to that
+consumer's DLQ. Queue depth is inspected in RabbitMQ Management; no DLQ-depth
+metric exporter or automatic DLQ replay is configured.
+Transport redelivery can repeat an attempt with the same retry count after a
+failed publish/acknowledgement or process restart. The retry header caps confirmed
+business retries, not all possible deliveries or elapsed database wait time.
+
+There is no transactional outbox or automatic reconciliation. A crash, unavailable
+broker, or timeout between commit and confirmed publication can leave the source
+updated without a delivered event. Post-commit publication has a separate
+five-second budget; a failure surfaces as HTTP 500 and keeps the committed data.
+Account lifecycle/identity writes still invalidate Accounts/dashboard caches.
+Initial account creation can publish
+its account event successfully and then fail to publish its unlock event. An HTTP
+retry may return a uniqueness/version conflict and is not durable event replay.
+Confirmed broker delivery and idempotent consumers do not make the complete
+source-to-projection flow exactly-once. Default DLX forwarding also lacks a
+failure-safe delivery guarantee; see [RabbitMQ's DLX safety notes](https://www.rabbitmq.com/docs/dlx#safety).
+
+The APIs require `ConnectionStrings:messaging` (AMQP), supplied automatically by
+AppHost. For standalone APIs set `ConnectionStrings__messaging` to the broker URI,
+in addition to their database and Redis connections. Use the Dashboard's broker
+Management endpoint and credentials; its mapped port is not fixed at 15672.
+Keep credentials out of Git. Broker connection recovery is enabled; the worker
+owns subscription recovery. `/health/ready` reports `messaging` unhealthy when the
+connection is closed or a configured subscription is inactive, while liveness
+remains process-only. Initial connection failures can prevent host startup.
+
+`Platform.Messaging` exports linked producer/consumer activities, with W3C trace
+headers and the normalized request correlation ID. Arbitrary baggage is not
+forwarded. Structured processing/retry logs include queue, type, EventId,
+correlation, UserId, and AchievementId when applicable, with failure exceptions.
+The existing Npgsql and native MongoDB activity sources cover database operations
+when a collector/listener is configured.
+
+See the [runtime verification procedure](docs/lab8-verification.md) for startup,
+isolated fixtures, replay, outages, DLQ inspection, and required screenshots.
+Automated checks and the whole-change review do not replace live acceptance;
+broker/database recovery and exported Aspire traces remain to be demonstrated.
