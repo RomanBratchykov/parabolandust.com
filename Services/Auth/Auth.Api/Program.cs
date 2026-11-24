@@ -1,3 +1,4 @@
+using Auth.Api.Email;
 using Auth.Api.Identity;
 using Auth.Api.Tokens;
 using Microsoft.AspNetCore.Antiforgery;
@@ -18,6 +19,11 @@ builder.Services.AddAuthentication(AuthIdentityRegistration.BearerScheme)
     });
 builder.Services.AddAuthorization();
 builder.Services.AddAuthDataProtection(builder.Configuration);
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IAuthEmailSender>(
+        new DevelopmentEmailSender(builder.Environment, builder.Configuration));
+}
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
