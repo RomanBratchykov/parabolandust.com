@@ -49,6 +49,7 @@ await using (var scope = app.Services.CreateAsyncScope())
     var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await database.Database.MigrateAsync();
     await IdentityRoleInitializer.InitializeAsync(scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>());
+    await DevelopmentAdminInitializer.InitializeAsync(scope.ServiceProvider, builder.Configuration, builder.Environment);
 }
 app.UseAuthentication();
 app.UseAuthorization();
