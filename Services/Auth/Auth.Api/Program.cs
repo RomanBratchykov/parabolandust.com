@@ -59,6 +59,9 @@ app.MapAuthForgotPassword();
 app.MapAuthResetPassword();
 app.MapAuthLogin();
 app.MapAuthRefresh();
+app.MapAuthSessionManagement();
+app.MapAuthChangePassword();
+app.MapAuthUserManagement();
 app.MapGet("/auth/csrf-token", (HttpContext context, IAntiforgery antiforgery) =>
 {
     var tokens = antiforgery.GetAndStoreTokens(context);
