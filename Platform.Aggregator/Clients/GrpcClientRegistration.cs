@@ -14,6 +14,8 @@ public static class GrpcClientRegistration
 {
     public static IServiceCollection AddGrpcDashboardClients(this IServiceCollection services)
     {
+        services.AddHttpContextAccessor();
+        services.AddScoped<IncomingBearerCredentials>();
         // Accounts is required; optional projections get fewer attempts for faster partial responses.
         Register<AccountsReader.AccountsReaderClient>(services, "accounts-api", "accounts.v1.AccountsReader", "GetUser", 4);
         Register<NewslettersReader.NewslettersReaderClient>(services, "newsletters-api", "newsletters.v1.NewslettersReader", "GetUserSubscriptions", 2);
@@ -35,6 +37,12 @@ public static class GrpcClientRegistration
                 provider.GetRequiredService<ILogger<GrpcDependencyHealthCheck>>()),
             HealthStatus.Unhealthy, ["grpc", "downstream", "ready"], TimeSpan.FromSeconds(3)));
         services.AddGrpcClient<TClient>(options => options.Address = new Uri($"https://{service}"))
+            .AddCallCredentials(async (context, metadata, serviceProvider) =>
+            {
+                var credentials = serviceProvider.GetRequiredService<IncomingBearerCredentials>();
+                var bearer = await credentials.GetAsync(context.CancellationToken);
+                metadata.Add("authorization", $"Bearer {bearer}");
+            })
             .ConfigureHttpClient(http => http.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigureChannel(channel => channel.ServiceConfig = new ServiceConfig
             {
