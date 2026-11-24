@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users
     password_hash VARCHAR(255),
     oauth_provider VARCHAR(50),
     oauth_id VARCHAR(200),
+    identity_managed BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) NOT NULL DEFAULT CURRENT_USER,
     updated_at TIMESTAMPTZ,
@@ -19,8 +20,27 @@ CREATE TABLE IF NOT EXISTS users
     row_version BIGINT NOT NULL DEFAULT 1 CHECK (row_version > 0),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT ck_users_oauth_pair CHECK ((oauth_provider IS NULL) = (oauth_id IS NULL)),
-    CONSTRAINT ck_users_auth CHECK ((password_hash IS NOT NULL) OR (oauth_provider IS NOT NULL))
+    CONSTRAINT ck_users_auth CHECK (
+        (identity_managed AND password_hash IS NULL AND oauth_provider IS NULL)
+        OR (NOT identity_managed AND (password_hash IS NOT NULL OR oauth_provider IS NOT NULL)))
 );
+
+-- Identity keys are exact issuer/subject pairs, not email addresses or caller IDs.
+CREATE TABLE IF NOT EXISTS external_identities
+(
+    issuer TEXT COLLATE "C" NOT NULL,
+    subject TEXT COLLATE "C" NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES users(user_id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMPTZ,
+    CONSTRAINT pk_external_identities PRIMARY KEY (issuer, subject),
+    CONSTRAINT ck_external_identity_issuer CHECK (octet_length(issuer) BETWEEN 1 AND 1024),
+    CONSTRAINT ck_external_identity_subject CHECK (octet_length(subject) BETWEEN 1 AND 512),
+    CONSTRAINT ck_external_identity_revoked_at CHECK (revoked_at IS NULL OR revoked_at >= created_at)
+);
+
+CREATE INDEX IF NOT EXISTS ix_external_identities_user
+    ON external_identities (user_id);
 
 CREATE TABLE IF NOT EXISTS game_linking
 (
