@@ -8,6 +8,9 @@
   <Project Path="Platform.Aggregator/Platform.Aggregator.csproj" />
   <Project Path="Platform.Aggregator.Tests/Platform.Aggregator.Tests.csproj" />
   <Folder Name="/Services/" />
+  <Folder Name="/Services/Auth/">
+    <Project Path="Services/Auth/Auth.Api/Auth.Api.csproj" />
+  </Folder>
   <Folder Name="/Services/GameStats/">
     <Project Path="Services/GameStats/GameStats.Domain/GameStats.Domain.csproj" />
     <Project Path="Services/GameStats/GameStats.Application/GameStats.Application.csproj" />
