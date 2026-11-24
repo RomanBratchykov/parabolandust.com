@@ -1,0 +1,3 @@
+name: parabolandust-keycloak
+runtime: dotnet
+description: Lab 9 Keycloak realm and authorization configuration
