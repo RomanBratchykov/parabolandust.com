@@ -10,14 +10,19 @@ public sealed class RefreshTokenService(
     IDbContextFactory<ApplicationDbContext> contextFactory,
     IJwtTokenService tokenService) : IRefreshTokenService
 {
-    public async Task<RefreshTokenGrant> IssueAsync(string userId, CancellationToken cancellationToken = default)
+    public async Task<RefreshTokenGrant?> IssueAsync(string userId, string securityStamp, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(securityStamp);
         await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        if (!await LockEligibleUserAsync(db, userId, securityStamp, cancellationToken))
+            return null;
         var token = tokenService.GenerateRefreshToken();
-        var session = CreateSession(userId, token, DateTimeOffset.UtcNow);
+        var session = CreateSession(userId, securityStamp, token, DateTimeOffset.UtcNow);
         db.RefreshTokens.Add(session);
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return new RefreshTokenGrant(userId, token, session.ExpiresAt);
     }
 
@@ -36,8 +41,15 @@ public sealed class RefreshTokenService(
         if (previous is null)
             return null;
 
+        if (!await LockEligibleUserAsync(db, previous.UserId, previous.SecurityStamp, cancellationToken))
+            return null;
+
+        now = DateTimeOffset.UtcNow;
+        if (previous.ExpiresAt <= now)
+            return null;
+
         var replacementToken = tokenService.GenerateRefreshToken();
-        var replacement = CreateSession(previous.UserId, replacementToken, now);
+        var replacement = CreateSession(previous.UserId, previous.SecurityStamp, replacementToken, now);
         previous.RevokedAt = now;
         previous.ReplacementTokenId = replacement.Id;
         db.RefreshTokens.Add(replacement);
@@ -70,9 +82,24 @@ public sealed class RefreshTokenService(
         return affected == 1;
     }
 
-    private static RefreshToken CreateSession(string userId, string token, DateTimeOffset now) => new()
+    // Updating the same stamp takes a row lock shared with password changes.
+    private static async Task<bool> LockEligibleUserAsync(ApplicationDbContext db, string userId,
+        string securityStamp, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var affected = await db.Users
+            .Where(user => user.Id == userId && user.SecurityStamp == securityStamp &&
+                user.EmailConfirmed && !user.TwoFactorEnabled &&
+                (user.LockoutEnd == null || user.LockoutEnd <= now))
+            .ExecuteUpdateAsync(update => update.SetProperty(user => user.SecurityStamp, user => user.SecurityStamp),
+                cancellationToken);
+        return affected == 1;
+    }
+
+    private static RefreshToken CreateSession(string userId, string securityStamp, string token, DateTimeOffset now) => new()
     {
         UserId = userId,
+        SecurityStamp = securityStamp,
         TokenHash = HashToken(token),
         CreatedAt = now,
         ExpiresAt = now.AddDays(7)

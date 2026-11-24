@@ -17,6 +17,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         tokens.ToTable("RefreshTokens");
         tokens.HasKey(token => token.Id);
         tokens.Property(token => token.TokenHash).HasMaxLength(64).IsRequired();
+        tokens.Property(token => token.SecurityStamp).IsRequired();
         // A tracked revoke/rotate must fail if another request already consumed it.
         tokens.Property(token => token.RevokedAt).IsConcurrencyToken();
         tokens.HasIndex(token => token.TokenHash).IsUnique();

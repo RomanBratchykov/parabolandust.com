@@ -32,13 +32,15 @@ public static class AuthLoginEndpoints
 
         var checkedPassword = await signIn.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
         // This password-only flow must not bypass an account's two-factor requirement.
-        if (!checkedPassword.Succeeded || user.TwoFactorEnabled)
+        if (!checkedPassword.Succeeded || user.TwoFactorEnabled || string.IsNullOrWhiteSpace(user.SecurityStamp))
             return Results.Unauthorized();
 
         cancellationToken.ThrowIfCancellationRequested();
         var roles = await users.GetRolesAsync(user);
         var accessToken = tokens.GenerateAccessToken(user, roles);
-        var refresh = await refreshTokens.IssueAsync(user.Id, cancellationToken);
+        var refresh = await refreshTokens.IssueAsync(user.Id, user.SecurityStamp, cancellationToken);
+        if (refresh is null)
+            return Results.Unauthorized();
         RefreshTokenCookie.Write(context.Response, refresh);
         return Results.Ok(new { accessToken, tokenType = "Bearer", expiresIn = 900 });
     }
