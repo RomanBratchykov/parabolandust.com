@@ -1,11 +1,19 @@
 using Auth.Api.Email;
+using Auth.Api.Data;
 using Auth.Api.Identity;
 using Auth.Api.Tokens;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Platform.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+
+var identityConnection = builder.Configuration.GetConnectionString("IdentityDb");
+if (string.IsNullOrWhiteSpace(identityConnection))
+    throw new InvalidOperationException("Connection string 'IdentityDb' is required.");
+builder.Services.AddAuthIdentity(options => options.UseNpgsql(identityConnection));
 
 var jwtSettings = builder.Configuration.GetRequiredSection("Jwt").Get<JwtSettings>()!;
 jwtSettings.Validate();
@@ -35,6 +43,12 @@ builder.Services.AddAntiforgery(options =>
 });
 
 var app = builder.Build();
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await database.Database.MigrateAsync();
+    await IdentityRoleInitializer.InitializeAsync(scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>());
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapGet("/auth/csrf-token", (HttpContext context, IAntiforgery antiforgery) =>

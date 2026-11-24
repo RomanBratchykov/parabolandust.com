@@ -12,6 +12,10 @@ var postgres = builder.AddPostgres("platform-postgres")
 
 var accountsDb = postgres.AddDatabase("AccountsDb", "accounts_db_p1");
 var newslettersDb = postgres.AddDatabase("NewslettersDb", "accounts_db_p2");
+var identityDb = postgres.AddDatabase("IdentityDb", "identity_db");
+var authJwtSecret = builder.AddParameter("auth-jwt-secret", secret: true);
+var authKeyPath = builder.AddParameter("auth-data-protection-key-path");
+var authMailPath = builder.AddParameter("auth-email-pickup-path");
 
 var mongoPassword = builder.AddParameter("mongo-password", secret: true);
 #pragma warning disable ASPIREMONGODB001 // Single-member replica set enables local projection transactions.
@@ -26,6 +30,16 @@ var redis = builder.AddRedis("redis")
 var messaging = builder.AddRabbitMQ("messaging")
     .WithDataVolume("parabolandust-platform-rabbitmq-data")
     .WithManagementPlugin();
+
+var auth = builder.AddProject<Projects.Auth_Api>("auth-api")
+    .WithHttpsEndpoint(name: "https")
+    .WithReference(identityDb).WaitFor(identityDb)
+    .WithEnvironment("Jwt__Issuer", "parabolandust-auth")
+    .WithEnvironment("Jwt__Audience", "parabolandust-api")
+    .WithEnvironment("Jwt__SecretKey", authJwtSecret)
+    .WithEnvironment("DataProtection__KeyPath", authKeyPath)
+    .WithEnvironment("Email__PickupDirectory", authMailPath)
+    .WithHttpHealthCheck("/health/ready", endpointName: "https");
 
 var accounts = builder.AddProject<Projects.Accounts_Api>("accounts-api", launchProfileName: "http")
     .WithHttpsEndpoint(name: "https")
