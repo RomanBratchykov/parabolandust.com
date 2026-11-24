@@ -15,6 +15,8 @@ public static class GrpcClientRegistration
     public static IServiceCollection AddGrpcDashboardClients(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddHttpClient("identityserver-token", client => client.Timeout = TimeSpan.FromSeconds(5));
+        services.AddSingleton<IdentityServerTokenProvider>();
         services.AddScoped<IncomingBearerCredentials>();
         // Accounts is required; optional projections get fewer attempts for faster partial responses.
         Register<AccountsReader.AccountsReaderClient>(services, "accounts-api", "accounts.v1.AccountsReader", "GetUser", 4);
