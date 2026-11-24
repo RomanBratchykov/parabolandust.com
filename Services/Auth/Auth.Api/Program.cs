@@ -1,5 +1,5 @@
+using Auth.Api.Identity;
 using Auth.Api.Tokens;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Platform.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,8 +9,8 @@ var jwtSettings = builder.Configuration.GetRequiredSection("Jwt").Get<JwtSetting
 jwtSettings.Validate();
 builder.Services.AddSingleton(jwtSettings);
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+builder.Services.AddAuthentication(AuthIdentityRegistration.BearerScheme)
+    .AddJwtBearer(AuthIdentityRegistration.BearerScheme, options =>
     {
         options.MapInboundClaims = false;
         options.TokenValidationParameters = jwtSettings.CreateValidationParameters();
