@@ -5,6 +5,7 @@
   <Project Path="Platform.Messaging.Tests/Platform.Messaging.Tests.csproj" />
   <Project Path="Platform.AppHost/Platform.AppHost.csproj" />
   <Project Path="Platform.ApiGateway/Platform.ApiGateway.csproj" />
+  <Project Path="Platform.IdentityServer/Platform.IdentityServer.csproj" />
   <Project Path="Platform.Aggregator/Platform.Aggregator.csproj" />
   <Project Path="Platform.Aggregator.Tests/Platform.Aggregator.Tests.csproj" />
   <Folder Name="/Services/" />
