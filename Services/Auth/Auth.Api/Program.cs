@@ -17,6 +17,7 @@ builder.Services.AddAuthentication(AuthIdentityRegistration.BearerScheme)
         options.TokenValidationParameters = jwtSettings.CreateValidationParameters();
     });
 builder.Services.AddAuthorization();
+builder.Services.AddAuthDataProtection(builder.Configuration);
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
