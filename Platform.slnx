@@ -11,6 +11,9 @@
   <Folder Name="/Services/Auth/">
     <Project Path="Services/Auth/Auth.Api/Auth.Api.csproj" />
   </Folder>
+  <Folder Name="/Services/Payments/">
+    <Project Path="Services/Payments/Payments.Api/Payments.Api.csproj" />
+  </Folder>
   <Folder Name="/Services/GameStats/">
     <Project Path="Services/GameStats/GameStats.Domain/GameStats.Domain.csproj" />
     <Project Path="Services/GameStats/GameStats.Application/GameStats.Application.csproj" />
