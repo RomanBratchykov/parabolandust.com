@@ -70,6 +70,11 @@ var aggregator = builder.AddProject<Projects.Platform_Aggregator>("aggregator")
 
 builder.AddProject<Projects.Platform_ApiGateway>("gateway")
     .WithHttpEndpoint(port: 5000, name: "http")
+    .WithHttpsEndpoint(port: 5001, name: "https")
+    .WithEnvironment("Authentication__Provider", "IdentityJwt")
+    .WithEnvironment("Jwt__Issuer", "parabolandust-auth")
+    .WithEnvironment("Jwt__Audience", "parabolandust-api")
+    .WithEnvironment("Jwt__SecretKey", authJwtSecret)
     .WithReference(auth).WithReference(accounts).WithReference(newsletters).WithReference(gameStats).WithReference(aggregator)
     .WaitFor(auth).WaitFor(accounts).WaitFor(newsletters).WaitFor(gameStats).WaitFor(aggregator)
     .WithHttpHealthCheck("/health/ready", endpointName: "http");

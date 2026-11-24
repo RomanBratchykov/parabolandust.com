@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.RabbitMQ.Client" Version="13.6.1" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.4" />
     <PackageReference Include="Grpc.AspNetCore.Server" Version="2.84.0" />
     <PackageReference Include="Grpc.AspNetCore.HealthChecks" Version="2.84.0" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
