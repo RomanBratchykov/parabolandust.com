@@ -12,11 +12,15 @@ public sealed class JwtTokenService(JwtSettings settings) : IJwtTokenService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(user.Id);
         ArgumentException.ThrowIfNullOrWhiteSpace(user.UserName);
+        if (!user.EmailConfirmed || string.IsNullOrWhiteSpace(user.Email))
+            throw new InvalidOperationException("A confirmed email is required to issue an access token.");
         var now = DateTime.UtcNow;
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
             new(JwtRegisteredClaimNames.UniqueName, user.UserName),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new("email_verified", "true", ClaimValueTypes.Boolean),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(JwtRegisteredClaimNames.Iat, EpochTime.GetIntDate(now).ToString(System.Globalization.CultureInfo.InvariantCulture), ClaimValueTypes.Integer64)
         };

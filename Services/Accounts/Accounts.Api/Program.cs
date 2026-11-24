@@ -8,6 +8,8 @@ using Platform.ServiceDefaults;
 using Platform.Caching;
 using Platform.ServiceDefaults.Caching;
 using Accounts.Api.Messaging;
+using Accounts.Api.Identity;
+using Accounts.Dal.Repositories;
 using Platform.ServiceDefaults.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +32,8 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddAccountsBll(connectionString);
+builder.Services.AddScoped(_ => new IdentityLinkRepository(connectionString));
+builder.Services.AddScoped<IdentityLinkService>();
 builder.Services.AddHealthChecks().AddNpgSql(connectionString, healthQuery: "SELECT 1",
     name: "accounts-db", tags: ["database", "postgresql", "ready"], timeout: TimeSpan.FromSeconds(5));
 builder.Services.AddAccountsCaching();
@@ -56,6 +60,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers().RequireAuthorization("InterimAdmin");
+app.MapIdentityLinks();
 app.MapGrpcService<AccountsGrpcService>().RequireAuthorization("InterimAdmin");
 app.MapGrpcHealthChecksService();
 app.MapDefaultEndpoints();
