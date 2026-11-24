@@ -16,6 +16,8 @@ var identityDb = postgres.AddDatabase("IdentityDb", "identity_db");
 var authJwtSecret = builder.AddParameter("auth-jwt-secret", secret: true);
 var authKeyPath = builder.AddParameter("auth-data-protection-key-path");
 var authMailPath = builder.AddParameter("auth-email-pickup-path");
+var keycloakAdminUser = builder.AddParameter("keycloak-admin-user");
+var keycloakAdminPassword = builder.AddParameter("keycloak-admin-password", secret: true);
 
 var mongoPassword = builder.AddParameter("mongo-password", secret: true);
 #pragma warning disable ASPIREMONGODB001 // Single-member replica set enables local projection transactions.
@@ -30,6 +32,14 @@ var redis = builder.AddRedis("redis")
 var messaging = builder.AddRabbitMQ("messaging")
     .WithDataVolume("parabolandust-platform-rabbitmq-data")
     .WithManagementPlugin();
+
+var keycloak = builder.AddKeycloak("keycloak", 8080, keycloakAdminUser, keycloakAdminPassword)
+    .WithDataVolume();
+var payments = builder.AddProject<Projects.Payments_Api>("payments-api")
+    .WithHttpsEndpoint(name: "https")
+    .WithReference(keycloak).WaitFor(keycloak)
+    .WithEnvironment("Authentication__Keycloak__Authority", "http://localhost:8080/realms/DevRealmDrivers")
+    .WithHttpHealthCheck("/health/ready", endpointName: "https");
 
 var auth = builder.AddProject<Projects.Auth_Api>("auth-api")
     .WithHttpsEndpoint(name: "https")
@@ -91,8 +101,8 @@ builder.AddProject<Projects.Platform_ApiGateway>("gateway")
     .WithEnvironment("Jwt__Issuer", "parabolandust-auth")
     .WithEnvironment("Jwt__Audience", "parabolandust-api")
     .WithEnvironment("Jwt__SecretKey", authJwtSecret)
-    .WithReference(auth).WithReference(accounts).WithReference(newsletters).WithReference(gameStats).WithReference(aggregator)
-    .WaitFor(auth).WaitFor(accounts).WaitFor(newsletters).WaitFor(gameStats).WaitFor(aggregator)
+    .WithReference(auth).WithReference(accounts).WithReference(newsletters).WithReference(gameStats).WithReference(aggregator).WithReference(payments)
+    .WaitFor(auth).WaitFor(accounts).WaitFor(newsletters).WaitFor(gameStats).WaitFor(aggregator).WaitFor(payments)
     .WithHttpHealthCheck("/health/ready", endpointName: "http");
 
 builder.Build().Run();
