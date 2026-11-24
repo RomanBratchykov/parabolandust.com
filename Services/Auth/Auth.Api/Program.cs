@@ -1,5 +1,6 @@
 using Auth.Api.Identity;
 using Auth.Api.Tokens;
+using Microsoft.AspNetCore.Antiforgery;
 using Platform.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,9 +17,23 @@ builder.Services.AddAuthentication(AuthIdentityRegistration.BearerScheme)
         options.TokenValidationParameters = jwtSettings.CreateValidationParameters();
     });
 builder.Services.AddAuthorization();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "__Host-parabolandust-csrf";
+    options.Cookie.Path = "/";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+});
 
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapGet("/auth/csrf-token", (HttpContext context, IAntiforgery antiforgery) =>
+{
+    var tokens = antiforgery.GetAndStoreTokens(context);
+    return Results.Ok(new { requestToken = tokens.RequestToken });
+}).AllowAnonymous();
 app.MapDefaultEndpoints();
 app.Run();
