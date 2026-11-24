@@ -12,10 +12,14 @@ using Platform.Caching;
 using Serilog;
 using Serilog.Context;
 using Newsletters.Api.Messaging;
+using Platform.ServiceDefaults.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.Services.AddPlatformAuthentication(builder.Configuration, builder.Environment);
+builder.Services.AddAuthorization(options => options.AddPolicy("InterimAdmin", policy =>
+    policy.AddAuthenticationSchemes(PlatformAuthentication.Scheme).RequireRole("Admin")));
 builder.AddNewslettersMessaging();
 builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks = true);
 builder.Services.AddPlatformCaching();
@@ -39,6 +43,8 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
 app.Use(async (context, next) =>
 {
     var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
@@ -57,8 +63,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapControllers();
-app.MapGrpcService<NewslettersGrpcService>();
+app.MapControllers().RequireAuthorization("InterimAdmin");
+app.MapGrpcService<NewslettersGrpcService>().RequireAuthorization("InterimAdmin");
 app.MapGrpcHealthChecksService();
 app.MapDefaultEndpoints();
 

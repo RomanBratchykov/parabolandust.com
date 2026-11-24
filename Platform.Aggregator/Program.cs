@@ -7,9 +7,13 @@ using Platform.Aggregator.Services;
 using Platform.ServiceDefaults;
 using Platform.Caching;
 using Platform.Aggregator.Caching;
+using Platform.ServiceDefaults.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+builder.Services.AddPlatformAuthentication(builder.Configuration, builder.Environment);
+builder.Services.AddAuthorization(options => options.AddPolicy("InterimAdmin", policy =>
+    policy.AddAuthenticationSchemes(PlatformAuthentication.Scheme).RequireRole("Admin")));
 builder.AddRedisDistributedCache("redis", settings => settings.DisableHealthChecks = true);
 builder.Services.AddPlatformCaching();
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -37,13 +41,15 @@ builder.Services.AddSwaggerGen(options => options.SwaggerDoc("v1", new OpenApiIn
 var app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
+app.UseAuthentication();
+app.UseAuthorization();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.MapControllers();
+app.MapControllers().RequireAuthorization("InterimAdmin");
 app.MapDefaultEndpoints();
 app.Run();
 

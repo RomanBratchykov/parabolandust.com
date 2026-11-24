@@ -12,9 +12,13 @@ using Platform.ServiceDefaults;
 using Platform.Caching;
 using Platform.ServiceDefaults.Grpc;
 using GameStats.WebApi.Messaging;
+using Platform.ServiceDefaults.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+builder.Services.AddPlatformAuthentication(builder.Configuration, builder.Environment);
+builder.Services.AddAuthorization(options => options.AddPolicy("InterimAdmin", policy =>
+    policy.AddAuthenticationSchemes(PlatformAuthentication.Scheme).RequireRole("Admin")));
 builder.AddGameStatsMessaging();
 builder.WebHost.ConfigureKestrel(options =>
     options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
@@ -39,6 +43,8 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
+app.UseAuthentication();
+app.UseAuthorization();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -65,6 +71,7 @@ app.MapGet("/api/stats/users/{userId:long}", async Task<IResult> (
     operation.Succeed();
     return Results.Ok(statistics);
 })
+    .RequireAuthorization("InterimAdmin")
     .WithName("GetPlayerStatistics")
     .Produces<PlayerStatistics>()
     .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -72,6 +79,6 @@ app.MapGet("/api/stats/users/{userId:long}", async Task<IResult> (
     .ProducesProblem(StatusCodes.Status500InternalServerError);
 
 app.MapDefaultEndpoints();
-app.MapGrpcService<GameStatsGrpcService>();
+app.MapGrpcService<GameStatsGrpcService>().RequireAuthorization("InterimAdmin");
 app.MapGrpcHealthChecksService();
 app.Run();

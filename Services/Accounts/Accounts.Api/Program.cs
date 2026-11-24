@@ -8,11 +8,15 @@ using Platform.ServiceDefaults;
 using Platform.Caching;
 using Platform.ServiceDefaults.Caching;
 using Accounts.Api.Messaging;
+using Platform.ServiceDefaults.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options =>
     options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
 builder.AddServiceDefaults();
+builder.Services.AddPlatformAuthentication(builder.Configuration, builder.Environment);
+builder.Services.AddAuthorization(options => options.AddPolicy("InterimAdmin", policy =>
+    policy.AddAuthenticationSchemes(PlatformAuthentication.Scheme).RequireRole("Admin")));
 builder.AddAccountsMessaging();
 builder.AddRedisDistributedCache("redis", options => options.DisableHealthChecks = true);
 builder.Services.AddPlatformCaching();
@@ -48,10 +52,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-app.MapGrpcService<AccountsGrpcService>();
+app.MapControllers().RequireAuthorization("InterimAdmin");
+app.MapGrpcService<AccountsGrpcService>().RequireAuthorization("InterimAdmin");
 app.MapGrpcHealthChecksService();
 app.MapDefaultEndpoints();
 
