@@ -70,8 +70,8 @@ var aggregator = builder.AddProject<Projects.Platform_Aggregator>("aggregator")
 
 builder.AddProject<Projects.Platform_ApiGateway>("gateway")
     .WithHttpEndpoint(port: 5000, name: "http")
-    .WithReference(accounts).WithReference(newsletters).WithReference(gameStats).WithReference(aggregator)
-    .WaitFor(accounts).WaitFor(newsletters).WaitFor(gameStats).WaitFor(aggregator)
+    .WithReference(auth).WithReference(accounts).WithReference(newsletters).WithReference(gameStats).WithReference(aggregator)
+    .WaitFor(auth).WaitFor(accounts).WaitFor(newsletters).WaitFor(gameStats).WaitFor(aggregator)
     .WithHttpHealthCheck("/health/ready", endpointName: "http");
 
 builder.Build().Run();

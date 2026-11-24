@@ -1,5 +1,6 @@
 using Auth.Api.Email;
 using Auth.Api.Data;
+using Auth.Api.Endpoints;
 using Auth.Api.Identity;
 using Auth.Api.Tokens;
 using Microsoft.AspNetCore.Antiforgery;
@@ -51,6 +52,13 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapAuthRegistration();
+app.MapAuthEmailConfirmation();
+app.MapAuthResendVerification();
+app.MapAuthForgotPassword();
+app.MapAuthResetPassword();
+app.MapAuthLogin();
+app.MapAuthRefresh();
 app.MapGet("/auth/csrf-token", (HttpContext context, IAntiforgery antiforgery) =>
 {
     var tokens = antiforgery.GetAndStoreTokens(context);
