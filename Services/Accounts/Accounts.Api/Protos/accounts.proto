@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option csharp_namespace = "Accounts.Grpc";
+package accounts.v1;
+
+// Public account summaries; private profile and authentication fields stay in Accounts.
+service AccountsReader {
+  rpc GetUser (UserRequest) returns (UserReply);
+}
+
+message UserRequest {
+  int64 user_id = 1;
+}
+
+message UserReply {
+  int64 user_id = 1;
+  string user_name = 2;
+  optional string photo_url = 3;
+}

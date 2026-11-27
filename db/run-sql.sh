@@ -10,7 +10,7 @@ seed=false
 procedures=false
 scheme=false
 all=false
-while getopts ":spc-a-:" opt; do
+while getopts ":spca-:" opt; do
     case "$opt" in
         s) seed=true ;;
         p) procedures=true ;;
