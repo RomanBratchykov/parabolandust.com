@@ -1,0 +1,19 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>parabolandust-platform-apphost</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.6.1" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.6.1" />
+    <PackageReference Include="Aspire.Hosting.Redis" Version="13.6.1" />
+    <ProjectReference Include="..\Services\Accounts\Accounts.Api\Accounts.Api.csproj" IsAspireProjectResource="true" />
+    <ProjectReference Include="..\Services\Newsletters\Newsletters.Api\Newsletters.Api.csproj" IsAspireProjectResource="true" />
+    <ProjectReference Include="..\Services\GameStats\GameStats.WebApi\GameStats.WebApi.csproj" IsAspireProjectResource="true" />
+    <ProjectReference Include="..\Platform.Aggregator\Platform.Aggregator.csproj" IsAspireProjectResource="true" />
+    <ProjectReference Include="..\Platform.ApiGateway\Platform.ApiGateway.csproj" IsAspireProjectResource="true" />
+  </ItemGroup>
+</Project>
