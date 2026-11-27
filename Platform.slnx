@@ -1,0 +1,38 @@
+<Solution>
+  <Project Path="Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
+  <Project Path="Platform.Caching/Platform.Caching.csproj" />
+  <Project Path="Platform.Messaging/Platform.Messaging.csproj" />
+  <Project Path="Platform.Messaging.Tests/Platform.Messaging.Tests.csproj" />
+  <Project Path="Platform.AppHost/Platform.AppHost.csproj" />
+  <Project Path="Platform.ApiGateway/Platform.ApiGateway.csproj" />
+  <Project Path="Platform.IdentityServer/Platform.IdentityServer.csproj" />
+  <Project Path="Platform.Aggregator/Platform.Aggregator.csproj" />
+  <Project Path="Platform.Aggregator.Tests/Platform.Aggregator.Tests.csproj" />
+  <Folder Name="/Services/" />
+  <Folder Name="/Services/Auth/">
+    <Project Path="Services/Auth/Auth.Api/Auth.Api.csproj" />
+  </Folder>
+  <Folder Name="/Services/Payments/">
+    <Project Path="Services/Payments/Payments.Api/Payments.Api.csproj" />
+  </Folder>
+  <Folder Name="/Services/GameStats/">
+    <Project Path="Services/GameStats/GameStats.Domain/GameStats.Domain.csproj" />
+    <Project Path="Services/GameStats/GameStats.Application/GameStats.Application.csproj" />
+    <Project Path="Services/GameStats/GameStats.Infrastructure/GameStats.Infrastructure.csproj" />
+    <Project Path="Services/GameStats/GameStats.WebApi/GameStats.WebApi.csproj" />
+    <Project Path="Services/GameStats/GameStats.Tests/GameStats.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Newsletters/">
+    <Project Path="Services/Newsletters/Newsletters.Api/Newsletters.Api.csproj" />
+    <Project Path="Services/Newsletters/Newsletters.Bll/Newsletters.Bll.csproj" />
+    <Project Path="Services/Newsletters/Newsletters.Dal/Newsletters.Dal.csproj" />
+    <Project Path="Services/Newsletters/Newsletters.Domain/Newsletters.Domain.csproj" />
+    <Project Path="Services/Newsletters/Newsletters.Tests/Newsletters.Tests.csproj" />
+  </Folder>
+  <Project Path="Services/Accounts/Accounts.Api/Accounts.Api.csproj" />
+  <Project Path="Services/Accounts/Accounts.AppHost/Accounts.AppHost.csproj" />
+  <Project Path="Services/Accounts/Accounts.Bll/Accounts.Bll.csproj" />
+  <Project Path="Services/Accounts/Accounts.Dal/Accounts.Dal.csproj" />
+  <Project Path="Services/Accounts/Accounts.Domain/Accounts.Domain.csproj" />
+  <Project Path="Services/Accounts/Accounts.Tests/Accounts.Tests.csproj" />
+</Solution>

@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Platform.Messaging\Platform.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\Platform.Caching\Platform.Caching.csproj" />
+    <PackageReference Include="AutoMapper" Version="16.2.0" />
+    <ProjectReference Include="..\Accounts.Dal\Accounts.Dal.csproj" />
+    <ProjectReference Include="..\Accounts.Domain\Accounts.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
